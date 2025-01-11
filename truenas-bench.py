@@ -1,0 +1,348 @@
+import subprocess
+import json
+import os
+import signal
+import threading
+import time
+
+def get_user_confirmation():
+    print("\n###################################")
+    print("#                                 #")
+    print("#          TN-Bench v1.00         #")
+    print("#          MONOLITHIC.            #")  
+    print("#                                 #")
+    print("###################################")
+    print("TN-Bench is an OpenSource Software Script that uses standard tools to Benchmark your System and collect various statistical information via the TrueNAS API.")
+    print("\nTN-Bench will make a Dataset in each of your pools for the purposes of this testing that will consume 10 GiB of space for every thread in your system during its run.")
+    print("\nAfter which time we will prompt you to delete the dataset which was created.")
+    continue_benchmark = input("\nWould you like to continue? (yes/no): ")
+    if continue_benchmark.lower() != 'yes':
+        print("Exiting TN-Bench.")
+        exit(0)
+
+def get_system_info():
+    result = subprocess.run(['midclt', 'call', 'system.info'], capture_output=True, text=True)
+    system_info = json.loads(result.stdout)
+    return system_info
+
+def print_system_info_table(system_info):
+    print("\n### System Information ###")
+    fields = [
+        ("Version", system_info.get("version", "N/A")),
+        ("Load Average (1m)", system_info.get("loadavg", ["N/A", "N/A", "N/A"])[0]),
+        ("Load Average (5m)", system_info.get("loadavg", ["N/A", "N/A", "N/A"])[1]),
+        ("Load Average (15m)", system_info.get("loadavg", ["N/A", "N/A", "N/A"])[2]),
+        ("Model", system_info.get("model", "N/A")),
+        ("Cores", system_info.get("cores", "N/A")),
+        ("Physical Cores", system_info.get("physical_cores", "N/A")),
+        ("System Product", system_info.get("system_product", "N/A")),
+        ("Physical Memory (GiB)", f"{system_info.get('physmem', 0) / (1024 ** 3):.2f}")
+    ]
+
+    max_field_length = max(len(field[0]) for field in fields)
+    max_value_length = max(len(str(field[1])) for field in fields)
+
+    print(f"{'Field'.ljust(max_field_length)} | {'Value'.ljust(max_value_length)}")
+    print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
+
+    for field, value in fields:
+        print(f"{field.ljust(max_field_length)} | {str(value).ljust(max_value_length)}")
+
+def get_pool_info():
+    result = subprocess.run(['midclt', 'call', 'pool.query'], capture_output=True, text=True)
+    pool_info = json.loads(result.stdout)
+    return pool_info
+
+def print_pool_info_table(pool_info):
+    for pool in pool_info:
+        print("\n### Pool Information ###")
+        fields = [
+            ("Name", pool.get("name", "N/A")),
+            ("Path", pool.get("path", "N/A")),
+            ("Status", pool.get("status", "N/A"))
+        ]
+
+        topology = pool.get("topology", {})
+        data = topology.get("data", []) if topology else []
+
+        vdev_count = len(data)
+        disk_count = sum(len(vdev.get("children", [])) for vdev in data)
+
+        fields.append(("VDEV Count", vdev_count))
+        fields.append(("Disk Count", disk_count))
+
+        max_field_length = max(len(field[0]) for field in fields)
+        max_value_length = max(len(str(field[1])) for field in fields)
+
+        print(f"{'Field'.ljust(max_field_length)} | {'Value'.ljust(max_value_length)}")
+        print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
+
+        for field, value in fields:
+            print(f"{field.ljust(max_field_length)} | {str(value).ljust(max_value_length)}")
+
+        print("\nVDEV Name  | Type           | Disk Count")
+        print("-----------+----------------+---------------")
+
+        for vdev in data:
+            vdev_name = vdev.get("name", "N/A")
+            vdev_type = vdev.get("type", "N/A")
+            vdev_disk_count = len(vdev.get("children", []))
+            print(f"{vdev_name.ljust(11)} | {vdev_type.ljust(14)} | {vdev_disk_count}")
+
+def get_disk_info():
+    result = subprocess.run(['midclt', 'call', 'disk.query'], capture_output=True, text=True)
+    disk_info = json.loads(result.stdout)
+    return disk_info
+
+def get_pool_membership():
+    result = subprocess.run(['midclt', 'call', 'pool.query'], capture_output=True, text=True)
+    pool_info = json.loads(result.stdout)
+    pool_membership = {}
+    for pool in pool_info:
+        topology = pool.get("topology", {})
+        data = topology.get("data", []) if topology else []
+        for vdev in data:
+            for disk in vdev.get("children", []):
+                pool_membership[disk["guid"]] = pool["name"]
+    return pool_membership
+
+def print_disk_info_table(disk_info, pool_membership):
+    print("\n### Disk Information ###")
+    fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool"]
+    max_field_length = max(len(field) for field in fields)
+    max_value_length = max(len(str(disk.get(field.lower(), "N/A"))) for disk in disk_info for field in fields)
+
+    print(f"{'Field'.ljust(max_field_length)} | {'Value'.ljust(max_value_length)}")
+    print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
+
+    for disk in disk_info:
+        pool_name = pool_membership.get(disk.get("zfs_guid"), "N/A")
+        values = [
+            disk.get("name", "N/A"),
+            disk.get("model", "N/A"),
+            disk.get("serial", "N/A"),
+            disk.get("zfs_guid", "N/A"),
+            pool_name
+        ]
+        for field, value in zip(fields, values):
+            print(f"{field.ljust(max_field_length)} | {str(value).ljust(max_value_length)}")
+        print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
+        print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
+
+def create_dataset(pool_name):
+    dataset_name = f"{pool_name}/tn-bench"
+    dataset_config = {
+        "name": dataset_name,
+        "recordsize": "1M",
+        "compression": "OFF",
+        "sync": "DISABLED"
+    }
+
+    # Check if the dataset already exists
+    result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+    existing_datasets = json.loads(result.stdout)
+    dataset_exists = any(ds['name'] == dataset_name for ds in existing_datasets)
+
+    if not dataset_exists:
+        subprocess.run(['midclt', 'call', 'pool.dataset.create', json.dumps(dataset_config)], capture_output=True, text=True)
+        print(f"Created temporary dataset: {dataset_name}")
+        # Fetch the updated dataset information
+        result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+        existing_datasets = json.loads(result.stdout)
+
+    # Return the mountpoint of the dataset
+    for ds in existing_datasets:
+        if ds['name'] == dataset_name:
+            return ds['mountpoint']
+    return None
+
+def run_dd_command(command):
+    subprocess.run(command, shell=True)
+
+def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path):
+    print(f"Running DD write benchmark with {threads} threads...")
+    speeds = []
+
+    for run in range(4):  # Run the benchmark four times
+        start_time = time.time()
+
+        threads_list = []
+        for i in range(threads):
+            command = f"dd if=/dev/urandom of={dataset_path}/{file_prefix}{i}.dat bs={block_size} count={bytes_per_thread} status=none"
+            thread = threading.Thread(target=run_dd_command, args=(command,))
+            thread.start()
+            threads_list.append(thread)
+
+        for thread in threads_list:
+            thread.join()
+
+        end_time = time.time()
+        total_time_taken = end_time - start_time
+        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes)
+
+        write_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
+        speeds.append(write_speed)
+        print(f"Run {run + 1} write speed: {write_speed:.2f} MB/s")
+
+    average_write_speed = sum(speeds) / len(speeds)
+    print(f"Average write speed: {average_write_speed:.2f} MB/s")
+    return speeds[0], speeds[1], speeds[2], speeds[3], average_write_speed
+
+def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path):
+    print(f"Running DD read benchmark with {threads} threads...")
+    speeds = []
+
+    for run in range(4):  # Run the benchmark four times
+        start_time = time.time()
+
+        threads_list = []
+        for i in range(threads):
+            command = f"dd if={dataset_path}/{file_prefix}{i}.dat of=/dev/null bs={block_size} count={bytes_per_thread} status=none"
+            thread = threading.Thread(target=run_dd_command, args=(command,))
+            thread.start()
+            threads_list.append(thread)
+
+        for thread in threads_list:
+            thread.join()
+
+        end_time = time.time()
+        total_time_taken = end_time - start_time
+        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes)
+
+        read_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
+        speeds.append(read_speed)
+        print(f"Run {run + 1} read speed: {read_speed:.2f} MB/s")
+
+    average_read_speed = sum(speeds) / len(speeds)
+    print(f"Average read speed: {average_read_speed:.2f} MB/s")
+    return speeds[0], speeds[1], speeds[2], speeds[3], average_read_speed
+
+def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file_prefix, dataset_path):
+    thread_counts = [1, cores // 4, cores // 2, cores]
+    results = []
+
+    for threads in thread_counts:
+        write_speed_1, write_speed_2, write_speed_3, write_speed_4, average_write_speed = run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
+        read_speed_1, read_speed_2, read_speed_3, read_speed_4, average_read_speed = run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
+        results.append((threads, write_speed_1, write_speed_2, write_speed_3, write_speed_4, average_write_speed, read_speed_1, read_speed_2, read_speed_3, read_speed_4, average_read_speed))
+
+    print(f"\n###################################")
+    print(f"#         DD Benchmark Results for Pool: {pool_name}    #")
+    print("###################################")
+    for threads, write_speed_1, write_speed_2, write_speed_3, write_speed_4, average_write_speed, read_speed_1, read_speed_2, read_speed_3, read_speed_4, average_read_speed in results:
+        print(f"#    Threads: {threads}    #")
+        print(f"#    1M Seq Write Run 1: {write_speed_1:.2f} MB/s     #")
+        print(f"#    1M Seq Write Run 2: {write_speed_2:.2f} MB/s     #")
+        print(f"#    1M Seq Write Run 3: {write_speed_3:.2f} MB/s     #")
+        print(f"#    1M Seq Write Run 4: {write_speed_4:.2f} MB/s     #")
+        print(f"#    1M Seq Write Avg: {average_write_speed:.2f} MB/s #")
+        print(f"#    1M Seq Read Run 1: {read_speed_1:.2f} MB/s      #")
+        print(f"#    1M Seq Read Run 2: {read_speed_2:.2f} MB/s      #")
+        print(f"#    1M Seq Read Run 3: {read_speed_3:.2f} MB/s      #")
+        print(f"#    1M Seq Read Run 4: {read_speed_4:.2f} MB/s      #")
+        print(f"#    1M Seq Read Avg: {average_read_speed:.2f} MB/s  #")
+        print("###################################")
+
+def run_disk_read_benchmark(disk_info):
+    print("Running disk read benchmark...")
+    print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 4 times for each disk and averaged.")
+    print("This benchmark is useful for comparing disks within the same pool, to identify potential issues and bottlenecks.")
+    results = []
+
+    def run_dd_read_command(disk_name):
+        print(f"Testing disk: {disk_name}")
+        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count=2621440 status=none"
+        start_time = time.time()
+        subprocess.run(command, shell=True)
+        end_time = time.time()
+        total_time_taken = end_time - start_time
+        total_bytes = 2621440 * 4 * 1024  # Total bytes = count * block size (in bytes)
+        read_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
+        return read_speed
+
+    for disk in disk_info:
+        disk_name = disk.get("name", "N/A")
+        if disk_name != "N/A":
+            speeds = []
+            for _ in range(4):  # Run 4 sequential times for each disk
+                speed = run_dd_read_command(disk_name)
+                speeds.append(speed)  # Collect the speed value
+            average_speed = sum(speeds) / len(speeds)
+            results.append((disk_name, speeds[0], speeds[1], speeds[2], speeds[3], average_speed))  # Report all 4 runs and the average speed in MB/s
+
+    print("\n###################################")
+    print("#         Disk Read Benchmark Results   #")
+    print("###################################")
+    for disk_name, speed1, speed2, speed3, speed4, average_speed in results:
+        print(f"#    Disk: {disk_name}    #")
+        print(f"#    Run 1: {speed1:.2f} MB/s     #")
+        print(f"#    Run 2: {speed2:.2f} MB/s     #")
+        print(f"#    Run 3: {speed3:.2f} MB/s     #")
+        print(f"#    Run 4: {speed4:.2f} MB/s     #")
+        print(f"#    Average: {average_speed:.2f} MB/s     #")
+    print("###################################")
+
+def cleanup(file_prefix, dataset_path):
+    print("Cleaning up test files...")
+    for file in os.listdir(dataset_path):
+        if file.startswith(file_prefix) and file.endswith('.dat'):
+            os.remove(os.path.join(dataset_path, file))
+
+def delete_dataset(dataset_name):
+    print(f"Deleting dataset: {dataset_name}")
+    subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": dataset_name, "recursive": False, "force": False})], capture_output=True, text=True)
+
+if __name__ == "__main__":
+    get_user_confirmation()
+    
+    start_time = time.time()  # Start the timer
+
+    system_info = get_system_info()
+    print_system_info_table(system_info)
+    
+    pool_info = get_pool_info()
+    print_pool_info_table(pool_info)
+
+    disk_info = get_disk_info()
+    pool_membership = get_pool_membership()
+    print_disk_info_table(disk_info, pool_membership)
+
+    cores = system_info.get("cores", 1)
+    bytes_per_thread_series_1 = 10240
+    block_size_series_1 = "1M"
+    file_prefix_series_1 = "file_"
+
+    print("\n###################################")
+    print("#                                 #")
+    print("#       DD Benchmark Starting     #")
+    print("#                                 #")
+    print("###################################")
+    print(f"Using {cores} threads for the benchmark.\n")
+
+    for pool in pool_info:
+        pool_name = pool.get('name', 'N/A')
+        print(f"\nCreating test dataset for pool: {pool_name}")
+        dataset_name = f"{pool_name}/tn-bench"
+        dataset_path = create_dataset(pool_name)
+        if dataset_path:
+            print(f"\nRunning benchmarks for pool: {pool_name}")
+            run_benchmarks_for_pool(pool_name, cores, bytes_per_thread_series_1, block_size_series_1, file_prefix_series_1, dataset_path)
+            cleanup(file_prefix_series_1, dataset_path)
+
+    run_disk_read_benchmark(disk_info)
+
+    end_time = time.time()  # End the timer
+    total_time_taken = end_time - start_time
+    total_time_taken_minutes = total_time_taken / 60
+
+    print(f"\nTotal benchmark time: {total_time_taken_minutes:.2f} minutes")
+
+    for pool in pool_info:
+        pool_name = pool.get('name', 'N/A')
+        dataset_name = f"{pool_name}/tn-bench"
+        delete = input(f"Do you want to delete the testing dataset {dataset_name}? (yes/no): ")
+        if delete.lower() == 'yes':
+            delete_dataset(dataset_name)
+            print(f"Dataset {dataset_name} deleted.")
+        else:
+            print(f"Dataset {dataset_name} not deleted.")
