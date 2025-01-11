@@ -24,15 +24,15 @@ The script will display system and pool information, then prompt you to continue
 
 **NOTE:** ZFS ARC will also be used and will impact your results. This may be undesirable in some circumstances, and the `zfs_arc_max` can be set to `1` (which means 1 byte) to prevent ARC from caching. Setting it back to `0` will restore the default behavior, but the system will need to be restarted!
 
+Example of `arcstat -f time,hit%,dh%,ph%,mh% 10` running while the benchmark is running.
 <img src="https://github.com/user-attachments/assets/4bdeea59-c88c-46b1-b17a-939594c4eda1" width="50%" />
-
 
 
 - **Disk Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. The first 50 GiB of data already on each disk is read in 4K chunks to `/dev/null` , making this a 4K sequential read test. 4K was chosen because `ashift=12` for all recent ZFS pools created in TrueNAS. This test used to read the first 10G of data on the disk, and was run 4 times. This was increased to 50G and is still run 4 times to increase the consistency and accuracy of this benchmark. Run-to-run variance is still expected, particularly on SSDs, as the data ends up inside of internal caches. For this reason, it is run 4 times and averaged.
   
 - **Results**: The script displays the results for each run and the average speed. This should give you an idea of the impacts of various thread-counts (as a synthetic representation of client-counts) and the ZFS ARC caching mechanism. 
 
-**NOTE:** The script's run duration is dependant on the number of threads in your system as well as the number of disks in your system. Small all-flash systems may complete this benchmark in 15 minutes, while larger systems with spinning hardrives may take several hours. The script will not stop other I/O activity on a production system, but will severely limit performance. This benchmark is best run on a system with no other workload. This will give you the best outcome in terms of the accuracy of the data, in addition to not creating angry users.
+**NOTE:** The script's run duration is dependant on the number of threads in your system as well as the number of disks in your system. Small all-flash systems may complete this benchmark in 25 minutes, while larger systems with spinning hardrives may take several hours. The script will not stop other I/O activity on a production system, but will severely limit performance. This benchmark is best run on a system with no other workload. This will give you the best outcome in terms of the accuracy of the data, in addition to not creating angry users.
 ### Cleanup
 
 After the benchmarking is complete, the script prompts you to delete the datasets created during the process.
@@ -42,8 +42,8 @@ After the benchmarking is complete, the script prompts you to delete the dataset
 ```
 ###################################
 #                                 #
-#          TN-Bench v1.00         #
-#          MONOLITHIC.            #  
+#          TN-Bench v1.01         #
+#          MONOLITHIC.            #
 #                                 #
 ###################################
 TN-Bench is an OpenSource Software Script that uses standard tools to Benchmark your System and collect various statistical information via the TrueNAS API.
@@ -53,13 +53,14 @@ TN-Bench will make a Dataset in each of your pools for the purposes of this test
 After which time we will prompt you to delete the dataset which was created.
 
 Would you like to continue? (yes/no): yes
+
 ### System Information ###
 Field                 | Value                                       
 ----------------------+---------------------------------------------
 Version               | TrueNAS-SCALE-25.04.0-MASTER-20250110-005622
-Load Average (1m)     | 0.22607421875                               
-Load Average (5m)     | 1.54833984375                               
-Load Average (15m)    | 2.447265625                                 
+Load Average (1m)     | 0.26953125                                  
+Load Average (5m)     | 0.18798828125                               
+Load Average (15m)    | 0.1328125                                   
 Model                 | AMD Ryzen 5 5600G with Radeon Graphics      
 Cores                 | 12                                          
 Physical Cores        | 6                                           
@@ -137,104 +138,104 @@ Creating test dataset for pool: inferno
 
 Running benchmarks for pool: inferno
 Running DD write benchmark with 1 threads...
-Run 1 write speed: 411.39 MB/s
-Run 2 write speed: 412.18 MB/s
-Run 3 write speed: 412.35 MB/s
-Run 4 write speed: 411.94 MB/s
-Average write speed: 411.96 MB/s
+Run 1 write speed: 409.71 MB/s
+Run 2 write speed: 411.04 MB/s
+Run 3 write speed: 410.87 MB/s
+Run 4 write speed: 412.42 MB/s
+Average write speed: 411.01 MB/s
 Running DD read benchmark with 1 threads...
-Run 1 read speed: 8226.72 MB/s
-Run 2 read speed: 8015.52 MB/s
-Run 3 read speed: 8290.26 MB/s
-Run 4 read speed: 8097.91 MB/s
-Average read speed: 8157.61 MB/s
+Run 1 read speed: 8152.66 MB/s
+Run 2 read speed: 8317.79 MB/s
+Run 3 read speed: 8226.39 MB/s
+Run 4 read speed: 8017.75 MB/s
+Average read speed: 8178.65 MB/s
 Running DD write benchmark with 3 threads...
-Run 1 write speed: 1146.18 MB/s
-Run 2 write speed: 1188.32 MB/s
-Run 3 write speed: 1187.90 MB/s
-Run 4 write speed: 1184.87 MB/s
-Average write speed: 1176.82 MB/s
+Run 1 write speed: 1182.07 MB/s
+Run 2 write speed: 1188.16 MB/s
+Run 3 write speed: 1191.31 MB/s
+Run 4 write speed: 1190.17 MB/s
+Average write speed: 1187.93 MB/s
 Running DD read benchmark with 3 threads...
-Run 1 read speed: 4173.55 MB/s
-Run 2 read speed: 4227.74 MB/s
-Run 3 read speed: 4220.36 MB/s
-Run 4 read speed: 4222.56 MB/s
-Average read speed: 4211.05 MB/s
+Run 1 read speed: 4181.71 MB/s
+Run 2 read speed: 4229.10 MB/s
+Run 3 read speed: 4213.72 MB/s
+Run 4 read speed: 4220.44 MB/s
+Average read speed: 4211.24 MB/s
 Running DD write benchmark with 6 threads...
-Run 1 write speed: 2055.52 MB/s
-Run 2 write speed: 2050.54 MB/s
-Run 3 write speed: 2041.28 MB/s
-Run 4 write speed: 2045.12 MB/s
-Average write speed: 2048.12 MB/s
+Run 1 write speed: 2043.38 MB/s
+Run 2 write speed: 2036.34 MB/s
+Run 3 write speed: 2036.05 MB/s
+Run 4 write speed: 2015.42 MB/s
+Average write speed: 2032.80 MB/s
 Running DD read benchmark with 6 threads...
-Run 1 read speed: 4136.48 MB/s
-Run 2 read speed: 4149.05 MB/s
-Run 3 read speed: 4142.20 MB/s
-Run 4 read speed: 4138.69 MB/s
-Average read speed: 4141.60 MB/s
+Run 1 read speed: 4156.96 MB/s
+Run 2 read speed: 4166.86 MB/s
+Run 3 read speed: 4167.39 MB/s
+Run 4 read speed: 4171.87 MB/s
+Average read speed: 4165.77 MB/s
 Running DD write benchmark with 12 threads...
-Run 1 write speed: 2399.55 MB/s
-Run 2 write speed: 2143.21 MB/s
-Run 3 write speed: 2107.37 MB/s
-Run 4 write speed: 2095.10 MB/s
-Average write speed: 2186.31 MB/s
+Run 1 write speed: 2425.96 MB/s
+Run 2 write speed: 2154.59 MB/s
+Run 3 write speed: 2128.10 MB/s
+Run 4 write speed: 2116.66 MB/s
+Average write speed: 2206.33 MB/s
 Running DD read benchmark with 12 threads...
-Run 1 read speed: 4117.50 MB/s
-Run 2 read speed: 4115.39 MB/s
-Run 3 read speed: 4112.43 MB/s
-Run 4 read speed: 4126.08 MB/s
-Average read speed: 4117.85 MB/s
+Run 1 read speed: 4107.46 MB/s
+Run 2 read speed: 4111.38 MB/s
+Run 3 read speed: 4107.17 MB/s
+Run 4 read speed: 4109.34 MB/s
+Average read speed: 4108.84 MB/s
 
 ###################################
 #         DD Benchmark Results for Pool: inferno    #
 ###################################
 #    Threads: 1    #
-#    1M Seq Write Run 1: 411.39 MB/s     #
-#    1M Seq Write Run 2: 412.18 MB/s     #
-#    1M Seq Write Run 3: 412.35 MB/s     #
-#    1M Seq Write Run 4: 411.94 MB/s     #
-#    1M Seq Write Avg: 411.96 MB/s #
-#    1M Seq Read Run 1: 8226.72 MB/s      #
-#    1M Seq Read Run 2: 8015.52 MB/s      #
-#    1M Seq Read Run 3: 8290.26 MB/s      #
-#    1M Seq Read Run 4: 8097.91 MB/s      #
-#    1M Seq Read Avg: 8157.61 MB/s  #
+#    1M Seq Write Run 1: 409.71 MB/s     #
+#    1M Seq Write Run 2: 411.04 MB/s     #
+#    1M Seq Write Run 3: 410.87 MB/s     #
+#    1M Seq Write Run 4: 412.42 MB/s     #
+#    1M Seq Write Avg: 411.01 MB/s #
+#    1M Seq Read Run 1: 8152.66 MB/s      #
+#    1M Seq Read Run 2: 8317.79 MB/s      #
+#    1M Seq Read Run 3: 8226.39 MB/s      #
+#    1M Seq Read Run 4: 8017.75 MB/s      #
+#    1M Seq Read Avg: 8178.65 MB/s  #
 ###################################
 #    Threads: 3    #
-#    1M Seq Write Run 1: 1146.18 MB/s     #
-#    1M Seq Write Run 2: 1188.32 MB/s     #
-#    1M Seq Write Run 3: 1187.90 MB/s     #
-#    1M Seq Write Run 4: 1184.87 MB/s     #
-#    1M Seq Write Avg: 1176.82 MB/s #
-#    1M Seq Read Run 1: 4173.55 MB/s      #
-#    1M Seq Read Run 2: 4227.74 MB/s      #
-#    1M Seq Read Run 3: 4220.36 MB/s      #
-#    1M Seq Read Run 4: 4222.56 MB/s      #
-#    1M Seq Read Avg: 4211.05 MB/s  #
+#    1M Seq Write Run 1: 1182.07 MB/s     #
+#    1M Seq Write Run 2: 1188.16 MB/s     #
+#    1M Seq Write Run 3: 1191.31 MB/s     #
+#    1M Seq Write Run 4: 1190.17 MB/s     #
+#    1M Seq Write Avg: 1187.93 MB/s #
+#    1M Seq Read Run 1: 4181.71 MB/s      #
+#    1M Seq Read Run 2: 4229.10 MB/s      #
+#    1M Seq Read Run 3: 4213.72 MB/s      #
+#    1M Seq Read Run 4: 4220.44 MB/s      #
+#    1M Seq Read Avg: 4211.24 MB/s  #
 ###################################
 #    Threads: 6    #
-#    1M Seq Write Run 1: 2055.52 MB/s     #
-#    1M Seq Write Run 2: 2050.54 MB/s     #
-#    1M Seq Write Run 3: 2041.28 MB/s     #
-#    1M Seq Write Run 4: 2045.12 MB/s     #
-#    1M Seq Write Avg: 2048.12 MB/s #
-#    1M Seq Read Run 1: 4136.48 MB/s      #
-#    1M Seq Read Run 2: 4149.05 MB/s      #
-#    1M Seq Read Run 3: 4142.20 MB/s      #
-#    1M Seq Read Run 4: 4138.69 MB/s      #
-#    1M Seq Read Avg: 4141.60 MB/s  #
+#    1M Seq Write Run 1: 2043.38 MB/s     #
+#    1M Seq Write Run 2: 2036.34 MB/s     #
+#    1M Seq Write Run 3: 2036.05 MB/s     #
+#    1M Seq Write Run 4: 2015.42 MB/s     #
+#    1M Seq Write Avg: 2032.80 MB/s #
+#    1M Seq Read Run 1: 4156.96 MB/s      #
+#    1M Seq Read Run 2: 4166.86 MB/s      #
+#    1M Seq Read Run 3: 4167.39 MB/s      #
+#    1M Seq Read Run 4: 4171.87 MB/s      #
+#    1M Seq Read Avg: 4165.77 MB/s  #
 ###################################
 #    Threads: 12    #
-#    1M Seq Write Run 1: 2399.55 MB/s     #
-#    1M Seq Write Run 2: 2143.21 MB/s     #
-#    1M Seq Write Run 3: 2107.37 MB/s     #
-#    1M Seq Write Run 4: 2095.10 MB/s     #
-#    1M Seq Write Avg: 2186.31 MB/s #
-#    1M Seq Read Run 1: 4117.50 MB/s      #
-#    1M Seq Read Run 2: 4115.39 MB/s      #
-#    1M Seq Read Run 3: 4112.43 MB/s      #
-#    1M Seq Read Run 4: 4126.08 MB/s      #
-#    1M Seq Read Avg: 4117.85 MB/s  #
+#    1M Seq Write Run 1: 2425.96 MB/s     #
+#    1M Seq Write Run 2: 2154.59 MB/s     #
+#    1M Seq Write Run 3: 2128.10 MB/s     #
+#    1M Seq Write Run 4: 2116.66 MB/s     #
+#    1M Seq Write Avg: 2206.33 MB/s #
+#    1M Seq Read Run 1: 4107.46 MB/s      #
+#    1M Seq Read Run 2: 4111.38 MB/s      #
+#    1M Seq Read Run 3: 4107.17 MB/s      #
+#    1M Seq Read Run 4: 4109.34 MB/s      #
+#    1M Seq Read Avg: 4108.84 MB/s  #
 ###################################
 Cleaning up test files...
 Running disk read benchmark...
@@ -269,44 +270,44 @@ Testing disk: nvme1n1
 #         Disk Read Benchmark Results   #
 ###################################
 #    Disk: nvme0n1    #
-#    Run 1: 2009.14 MB/s     #
-#    Run 2: 2680.08 MB/s     #
-#    Run 3: 3970.21 MB/s     #
-#    Run 4: 3964.53 MB/s     #
-#    Average: 3155.99 MB/s     #
+#    Run 1: 2026.97 MB/s     #
+#    Run 2: 1959.99 MB/s     #
+#    Run 3: 1960.39 MB/s     #
+#    Run 4: 1960.94 MB/s     #
+#    Average: 1977.07 MB/s     #
 #    Disk: nvme3n1    #
-#    Run 1: 1978.65 MB/s     #
-#    Run 2: 2072.62 MB/s     #
-#    Run 3: 3974.11 MB/s     #
-#    Run 4: 3975.83 MB/s     #
-#    Average: 3000.30 MB/s     #
+#    Run 1: 2029.23 MB/s     #
+#    Run 2: 1961.14 MB/s     #
+#    Run 3: 1956.62 MB/s     #
+#    Run 4: 1959.65 MB/s     #
+#    Average: 1976.66 MB/s     #
 #    Disk: nvme5n1    #
-#    Run 1: 1944.16 MB/s     #
-#    Run 2: 2715.57 MB/s     #
-#    Run 3: 3968.82 MB/s     #
-#    Run 4: 3970.32 MB/s     #
-#    Average: 3149.72 MB/s     #
+#    Run 1: 2034.83 MB/s     #
+#    Run 2: 1968.09 MB/s     #
+#    Run 3: 1965.92 MB/s     #
+#    Run 4: 1967.62 MB/s     #
+#    Average: 1984.12 MB/s     #
 #    Disk: nvme2n1    #
-#    Run 1: 1783.78 MB/s     #
-#    Run 2: 1734.97 MB/s     #
-#    Run 3: 3961.26 MB/s     #
-#    Run 4: 3976.13 MB/s     #
-#    Average: 2864.04 MB/s     #
+#    Run 1: 2022.89 MB/s     #
+#    Run 2: 1960.77 MB/s     #
+#    Run 3: 1960.92 MB/s     #
+#    Run 4: 1960.54 MB/s     #
+#    Average: 1976.28 MB/s     #
 #    Disk: nvme4n1    #
-#    Run 1: 1927.84 MB/s     #
-#    Run 2: 1876.39 MB/s     #
-#    Run 3: 3964.16 MB/s     #
-#    Run 4: 3970.86 MB/s     #
-#    Average: 2934.81 MB/s     #
+#    Run 1: 1836.50 MB/s     #
+#    Run 2: 1791.16 MB/s     #
+#    Run 3: 1790.46 MB/s     #
+#    Run 4: 1788.25 MB/s     #
+#    Average: 1801.59 MB/s     #
 #    Disk: nvme1n1    #
-#    Run 1: 1976.26 MB/s     #
-#    Run 2: 1917.99 MB/s     #
-#    Run 3: 3954.96 MB/s     #
-#    Run 4: 3960.59 MB/s     #
-#    Average: 2952.45 MB/s     #
+#    Run 1: 2114.62 MB/s     #
+#    Run 2: 2039.22 MB/s     #
+#    Run 3: 2038.66 MB/s     #
+#    Run 4: 2038.23 MB/s     #
+#    Average: 2057.68 MB/s     #
 ###################################
 
-Total benchmark time: 14.26 minutes
+Total benchmark time: 23.15 minutes
 Do you want to delete the testing dataset inferno/tn-bench? (yes/no): 
 ```
 
