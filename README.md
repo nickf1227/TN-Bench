@@ -312,7 +312,4 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-```
-
-You can copy this content into a file named `README.md` and place it in the root of your GitHub repository. Would you like any specific modifications to this README?
+This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
