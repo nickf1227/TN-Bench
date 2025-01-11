@@ -24,6 +24,7 @@ The script will display system and pool information, then prompt you to continue
 - **Disk Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. Data is read in 4K chunks to `/dev/null` here, making this a 4K sequential read test. 4K was chosen because `ashift=12` for all recent ZFS pools created in TrueNAS. This test reads the first 10G of data on the disk, and is run 4 times. Run-to-run variance is expected, particularly on SSDs, as the data ends up inside of internal caches. For this reason, it is run 4 times and averaged.
 - **Results**: The script displays the results for each run and the average speed. This should give you an idea of the impacts of various thread-counts (as a synthetic representation of client-counts) and the ZFS ARC caching mechanism. 
 
+**NOTE:** The script's run duration is dependant on the number of threads in your system as well as the number of disks in your system. Small all-flash systems may complete this benchmark in 15 minutes, while larger systems with spinning hardrives may take several hours. The script will not stop other I/O activity on a production system, but will severely limit performance. This benchmark is best run on a system with no other workload. This will give you the best outcome in terms of the accuracy of the data, in addition to not creating angry users.
 ### Cleanup
 
 After the benchmarking is complete, the script prompts you to delete the datasets created during the process.
