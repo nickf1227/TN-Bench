@@ -251,12 +251,12 @@ def run_disk_read_benchmark(disk_info):
 
     def run_dd_read_command(disk_name):
         print(f"Testing disk: {disk_name}")
-        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count=2621440 status=none"
+        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count=13107200 status=none"  # 50 GiB in 4 KiB blocks
         start_time = time.time()
         subprocess.run(command, shell=True)
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = 2621440 * 4 * 1024  # Total bytes = count * block size (in bytes)
+        total_bytes = 50 * 1024 * 1024 * 1024  # Total bytes = 50 GiB
         read_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         return read_speed
 
