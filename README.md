@@ -7,8 +7,7 @@ TN-Bench is an OpenSource software script that benchmarks your system and collec
 - Collects system information using TrueNAS API.
 - Benchmarks system performance using `dd` command.
 - Provides detailed information about system, pools, and disks.
-- Supports multi-threaded read and write benchmarks.
-
+- Supports multiple pools.
 
 ### Running the Script
 
@@ -19,10 +18,11 @@ The script will display system and pool information, then prompt you to continue
 
 ### Benchmarking Process
 
-- **Dataset Creation**: The script creates a temporary dataset in each pool.
-- **Write Benchmark**: The script performs four runs of the write benchmark using `dd` with varying thread counts.
-- **Read Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts.
-- **Results**: The script displays the results for each run and the average speed.
+- **Dataset Creation**: The script creates a temporary dataset in each pool. The dataset is created with a 1M Record Size with no Compression and sync=Disabled using `midclt call pool.dataset.create`
+- **Pool Write Benchmark**: The script performs four runs of the write benchmark using `dd` with varying thread counts. We are using `/dev/urandom` as our input file, so CPU performance may be relevant. This is by design as `/dev/zero` is flawed for this purpoose, and CPU stress is expected in real-world use anyway. The data is written in 1M chunks to a dataset with a 1M record size. For each thread, 10G of data is written. This scales with the number of threads, so a system with 16 Threads would write 160G of data.
+- **Pool Read Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. We are using `/dev/null` as out output file, so RAM speed may be relevant. ZFS ARC will also be used and will impact your results. This may be undesirable in some circumstances, and the `zfs_arc_max` can be set to `1` to precent ARC from caching. The data is read in 1M chunks from a dataset with a 1M record size. For each thread, the previously written 10G of data is read. This scales with the number of threads, so a system with 16 Threads would have read 160G of data.
+- **Disk Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. Data is read in 4K chunks to `/dev/null` here, making this a 4K sequential read test. 4K was chosen because `ashift=12` for all recent ZFS pools created in TrueNAS. This test reads the first 10G of data on the disk, and is run 4 times. Run-to-run variance is expected, particularly on SSDs, as the data ends up inside of internal caches. For this reason, it is run 4 times and averaged.
+- **Results**: The script displays the results for each run and the average speed. This should give you an idea of the impacts of various thread-counts (as a synthetic representation of client-counts) and the ZFS ARC caching mechanism. 
 
 ### Cleanup
 
