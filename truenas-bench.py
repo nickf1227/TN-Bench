@@ -8,7 +8,7 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.00         #")
+    print("#          TN-Bench v1.01         #")
     print("#          MONOLITHIC.            #")  
     print("#                                 #")
     print("###################################")
