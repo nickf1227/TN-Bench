@@ -1,5 +1,3 @@
-Here's a README file for your script with GitHub-flavored Markdown:
-
 # TN-Bench v1.00
 
 TN-Bench is an OpenSource software script that benchmarks your system and collects various statistical information via the TrueNAS API. It creates a dataset in each of your pools during testing, consuming 10 GiB of space for each thread in your system.
