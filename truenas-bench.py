@@ -8,7 +8,7 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.01         #")
+    print("#          TN-Bench v1.02         #")
     print("#          MONOLITHIC.            #")  
     print("#                                 #")
     print("###################################")
@@ -108,7 +108,7 @@ def get_pool_membership():
 
 def print_disk_info_table(disk_info, pool_membership):
     print("\n### Disk Information ###")
-    fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool"]
+    fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool", "Size (GiB)"]
     max_field_length = max(len(field) for field in fields)
     max_value_length = max(len(str(disk.get(field.lower(), "N/A"))) for disk in disk_info for field in fields)
 
@@ -117,12 +117,14 @@ def print_disk_info_table(disk_info, pool_membership):
 
     for disk in disk_info:
         pool_name = pool_membership.get(disk.get("zfs_guid"), "N/A")
+        size_gib = disk.get("size", 0) / (1024 ** 3)
         values = [
             disk.get("name", "N/A"),
             disk.get("model", "N/A"),
             disk.get("serial", "N/A"),
             disk.get("zfs_guid", "N/A"),
-            pool_name
+            pool_name,
+            f"{size_gib:.2f}"
         ]
         for field, value in zip(fields, values):
             print(f"{field.ljust(max_field_length)} | {str(value).ljust(max_value_length)}")
@@ -245,40 +247,43 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
 
 def run_disk_read_benchmark(disk_info):
     print("Running disk read benchmark...")
-    print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 4 times for each disk and averaged.")
-    print("This benchmark is useful for comparing disks within the same pool, to identify potential issues and bottlenecks.")
+    print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 2 times for each disk and averaged.")
+    print("This benchmark reads data in the amount of total system RAM or the total size of the disk, whichever is smaller.")
     results = []
 
-    def run_dd_read_command(disk_name):
+    def run_dd_read_command(disk_name, read_size_gib):
         print(f"Testing disk: {disk_name}")
-        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count=13107200 status=none"  # 50 GiB in 4 KiB blocks
+        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count={read_size_gib * 1024 * 1024 // 4} status=none"  # Read size in 4 KiB blocks
         start_time = time.time()
         subprocess.run(command, shell=True)
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = 50 * 1024 * 1024 * 1024  # Total bytes = 50 GiB
+        total_bytes = read_size_gib * 1024 * 1024 * 1024  # Total bytes = read size in GiB
         read_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         return read_speed
 
+    system_ram_gib = system_info.get('physmem', 0) / (1024 ** 3)  # System RAM in GiB
+
     for disk in disk_info:
         disk_name = disk.get("name", "N/A")
+        disk_size_gib = disk.get("size", 0) / (1024 ** 3)  # Disk size in GiB
+        read_size_gib = min(system_ram_gib, disk_size_gib)  # Read the smaller of system RAM or disk size
+
         if disk_name != "N/A":
             speeds = []
-            for _ in range(4):  # Run 4 sequential times for each disk
-                speed = run_dd_read_command(disk_name)
+            for _ in range(2):  # Run 2 sequential times for each disk
+                speed = run_dd_read_command(disk_name, read_size_gib)
                 speeds.append(speed)  # Collect the speed value
             average_speed = sum(speeds) / len(speeds)
-            results.append((disk_name, speeds[0], speeds[1], speeds[2], speeds[3], average_speed))  # Report all 4 runs and the average speed in MB/s
+            results.append((disk_name, speeds[0], speeds[1], average_speed))  # Report both runs and the average speed in MB/s
 
     print("\n###################################")
     print("#         Disk Read Benchmark Results   #")
     print("###################################")
-    for disk_name, speed1, speed2, speed3, speed4, average_speed in results:
+    for disk_name, speed1, speed2, average_speed in results:
         print(f"#    Disk: {disk_name}    #")
         print(f"#    Run 1: {speed1:.2f} MB/s     #")
         print(f"#    Run 2: {speed2:.2f} MB/s     #")
-        print(f"#    Run 3: {speed3:.2f} MB/s     #")
-        print(f"#    Run 4: {speed4:.2f} MB/s     #")
         print(f"#    Average: {average_speed:.2f} MB/s     #")
     print("###################################")
 
