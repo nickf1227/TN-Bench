@@ -8,14 +8,18 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.04         #")
+    print("#          TN-Bench v1.05         #")
     print("#          MONOLITHIC.            #")  
     print("#                                 #")
     print("###################################")
     print("TN-Bench is an OpenSource Software Script that uses standard tools to Benchmark your System and collect various statistical information via the TrueNAS API.")
-    print("\nTN-Bench will make a Dataset in each of your pools for the purposes of this testing that will consume 10 GiB of space for every thread in your system during its run.")
+    print("\nTN-Bench will make a Dataset in each of your pools for the purposes of this testing that will consume 20 GiB of space for every thread in your system during its run.")
     print("\nAfter which time we will prompt you to delete the dataset which was created.")
-    print("\WARNING: This test will make your system EXTREMELY slow during its run. It is recommended to run this test when no other workloads are running.")
+    print("###################################")
+    print("\nWARNING: This test will make your system EXTREMELY slow during its run. It is recommended to run this test when no other workloads are running.")
+    print("\nNOTE: ZFS ARC will also be used and will impact your results. This may be undesirable in some circumstances, and the zfs_arc_max can be set to 1 (which means 1 byte) to prevent ARC from caching.")
+    print("\nNOTE: Setting it back to 0 will restore the default behavior, but the system will need to be restarted!")
+    print("###################################")
     continue_benchmark = input("\nWould you like to continue? (yes/no): ")
     if continue_benchmark.lower() != 'yes':
         print("Exiting TN-Bench.")
@@ -109,6 +113,7 @@ def get_pool_membership():
 
 def print_disk_info_table(disk_info, pool_membership):
     print("\n### Disk Information ###")
+    print("\nNOTE: The TrueNAS API will return N/A for the Pool for the boot device(s) as well as the disk name if the disk is not a member of a pool.")
     fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool", "Size (GiB)"]
     max_field_length = max(len(field) for field in fields)
     max_value_length = max(len(str(disk.get(field.lower(), "N/A"))) for disk in disk_info for field in fields)
@@ -245,7 +250,7 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
 def run_disk_read_benchmark(disk_info):
     print("Running disk read benchmark...")
     print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 2 times for each disk and averaged.")
-    print("This benchmark reads data in the amount of total system RAM or the total size of the disk, whichever is smaller.")
+    print("In order to work around ARC caching in systems with it still enabled, This benchmark reads data in the amount of total system RAM or the total size of the disk, whichever is smaller.")
     results = []
 
     def run_dd_read_command(disk_name, read_size_gib):
