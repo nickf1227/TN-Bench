@@ -165,12 +165,12 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
     print(f"Running DD write benchmark with {threads} threads...")
     speeds = []
 
-    for run in range(4):  # Run the benchmark four times
+    for run in range(2):  # Run the benchmark two times
         start_time = time.time()
 
         threads_list = []
         for i in range(threads):
-            command = f"dd if=/dev/urandom of={dataset_path}/{file_prefix}{i}.dat bs={block_size} count={bytes_per_thread} status=none"
+            command = f"dd if=/dev/urandom of={dataset_path}/{file_prefix}{i}.dat bs={block_size} count={bytes_per_thread * 2} status=none"  # Double the size
             thread = threading.Thread(target=run_dd_command, args=(command,))
             thread.start()
             threads_list.append(thread)
@@ -180,7 +180,7 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes)
+        total_bytes = threads * bytes_per_thread * 2 * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes) * 2
 
         write_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         speeds.append(write_speed)
@@ -188,18 +188,18 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
     average_write_speed = sum(speeds) / len(speeds)
     print(f"Average write speed: {average_write_speed:.2f} MB/s")
-    return speeds[0], speeds[1], speeds[2], speeds[3], average_write_speed
+    return speeds[0], speeds[1], average_write_speed
 
 def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path):
     print(f"Running DD read benchmark with {threads} threads...")
     speeds = []
 
-    for run in range(4):  # Run the benchmark four times
+    for run in range(2):  # Run the benchmark two times
         start_time = time.time()
 
         threads_list = []
         for i in range(threads):
-            command = f"dd if={dataset_path}/{file_prefix}{i}.dat of=/dev/null bs={block_size} count={bytes_per_thread} status=none"
+            command = f"dd if={dataset_path}/{file_prefix}{i}.dat of=/dev/null bs={block_size} count={bytes_per_thread * 2} status=none"  # Double the size
             thread = threading.Thread(target=run_dd_command, args=(command,))
             thread.start()
             threads_list.append(thread)
@@ -209,7 +209,7 @@ def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, datas
 
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes)
+        total_bytes = threads * bytes_per_thread * 2 * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes) * 2
 
         read_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         speeds.append(read_speed)
@@ -217,31 +217,27 @@ def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, datas
 
     average_read_speed = sum(speeds) / len(speeds)
     print(f"Average read speed: {average_read_speed:.2f} MB/s")
-    return speeds[0], speeds[1], speeds[2], speeds[3], average_read_speed
+    return speeds[0], speeds[1], average_read_speed
 
 def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file_prefix, dataset_path):
     thread_counts = [1, cores // 4, cores // 2, cores]
     results = []
 
     for threads in thread_counts:
-        write_speed_1, write_speed_2, write_speed_3, write_speed_4, average_write_speed = run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
-        read_speed_1, read_speed_2, read_speed_3, read_speed_4, average_read_speed = run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
-        results.append((threads, write_speed_1, write_speed_2, write_speed_3, write_speed_4, average_write_speed, read_speed_1, read_speed_2, read_speed_3, read_speed_4, average_read_speed))
+        write_speed_1, write_speed_2, average_write_speed = run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
+        read_speed_1, read_speed_2, average_read_speed = run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
+        results.append((threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed))
 
     print(f"\n###################################")
     print(f"#         DD Benchmark Results for Pool: {pool_name}    #")
     print("###################################")
-    for threads, write_speed_1, write_speed_2, write_speed_3, write_speed_4, average_write_speed, read_speed_1, read_speed_2, read_speed_3, read_speed_4, average_read_speed in results:
+    for threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed in results:
         print(f"#    Threads: {threads}    #")
         print(f"#    1M Seq Write Run 1: {write_speed_1:.2f} MB/s     #")
         print(f"#    1M Seq Write Run 2: {write_speed_2:.2f} MB/s     #")
-        print(f"#    1M Seq Write Run 3: {write_speed_3:.2f} MB/s     #")
-        print(f"#    1M Seq Write Run 4: {write_speed_4:.2f} MB/s     #")
         print(f"#    1M Seq Write Avg: {average_write_speed:.2f} MB/s #")
         print(f"#    1M Seq Read Run 1: {read_speed_1:.2f} MB/s      #")
         print(f"#    1M Seq Read Run 2: {read_speed_2:.2f} MB/s      #")
-        print(f"#    1M Seq Read Run 3: {read_speed_3:.2f} MB/s      #")
-        print(f"#    1M Seq Read Run 4: {read_speed_4:.2f} MB/s      #")
         print(f"#    1M Seq Read Avg: {average_read_speed:.2f} MB/s  #")
         print("###################################")
 
@@ -253,7 +249,7 @@ def run_disk_read_benchmark(disk_info):
 
     def run_dd_read_command(disk_name, read_size_gib):
         print(f"Testing disk: {disk_name}")
-        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count={int(read_size_gib * 1024 * 1024 // 4)} status=none"  # Read size in 4 KiB blocks
+        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count={read_size_gib * 1024 * 1024 // 4} status=none"  # Read size in 4 KiB blocks
         start_time = time.time()
         subprocess.run(command, shell=True)
         end_time = time.time()
