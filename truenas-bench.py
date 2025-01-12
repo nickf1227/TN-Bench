@@ -113,7 +113,9 @@ def get_pool_membership():
 
 def print_disk_info_table(disk_info, pool_membership):
     print("\n### Disk Information ###")
-    print("\nNOTE: The TrueNAS API will return N/A for the Pool for the boot device(s) as well as the disk name if the disk is not a member of a pool.")
+    print("###################################")
+    print("\nNOTE: The TrueNAS API will return N/A for the Pool for the boot device(s) as well as any disk is not a member of a pool.")
+    print("###################################")
     fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool", "Size (GiB)"]
     max_field_length = max(len(field) for field in fields)
     max_value_length = max(len(str(disk.get(field.lower(), "N/A"))) for disk in disk_info for field in fields)
@@ -249,8 +251,10 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
 
 def run_disk_read_benchmark(disk_info):
     print("Running disk read benchmark...")
+    print("###################################")
     print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 2 times for each disk and averaged.")
     print("In order to work around ARC caching in systems with it still enabled, This benchmark reads data in the amount of total system RAM or the total size of the disk, whichever is smaller.")
+    print("###################################")
     results = []
 
     def run_dd_read_command(disk_name, read_size_gib):
