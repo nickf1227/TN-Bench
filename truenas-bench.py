@@ -8,7 +8,7 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.02         #")
+    print("#          TN-Bench v1.01         #")
     print("#          MONOLITHIC.            #")  
     print("#                                 #")
     print("###################################")
@@ -16,21 +16,13 @@ def get_user_confirmation():
     print("\nTN-Bench will make a Dataset in each of your pools for the purposes of this testing that will consume 10 GiB of space for every thread in your system during its run.")
     print("\nAfter which time we will prompt you to delete the dataset which was created.")
     continue_benchmark = input("\nWould you like to continue? (yes/no): ")
-    if continue_benchmark.lower() not in ['yes', 'y']:
+    if continue_benchmark.lower() != 'yes':
         print("Exiting TN-Bench.")
         exit(0)
 
 def get_system_info():
-    try:
-        result = subprocess.run(['midclt', 'call', 'system.info'], capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Command 'midclt call system.info' failed with error: {e}")
-        exit(1)
-    try:
-        system_info = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print("Error: Unable to decode system information from JSON.")
-        exit(1)
+    result = subprocess.run(['midclt', 'call', 'system.info'], capture_output=True, text=True)
+    system_info = json.loads(result.stdout)
     return system_info
 
 def print_system_info_table(system_info):
@@ -44,10 +36,11 @@ def print_system_info_table(system_info):
         ("Cores", system_info.get("cores", "N/A")),
         ("Physical Cores", system_info.get("physical_cores", "N/A")),
         ("System Product", system_info.get("system_product", "N/A")),
+        ("Physical Memory (GiB)", f"{system_info.get('physmem', 0) / (1024 ** 3):.2f}")
     ]
 
     max_field_length = max(len(field[0]) for field in fields)
-    max_value_length = max(max(len(str(field[1])) for field in fields), max(len(field[0]) for field in fields))
+    max_value_length = max(len(str(field[1])) for field in fields)
 
     print(f"{'Field'.ljust(max_field_length)} | {'Value'.ljust(max_value_length)}")
     print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
@@ -56,24 +49,8 @@ def print_system_info_table(system_info):
         print(f"{field.ljust(max_field_length)} | {str(value).ljust(max_value_length)}")
 
 def get_pool_info():
-    try:
-        result = subprocess.run(['midclt', 'call', 'pool.query'], capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Command 'midclt call pool.query' failed with error: {e}")
-        exit(1)
-    try:
-        try:
-            pool_info = json.loads(result.stdout)
-        except json.JSONDecodeError:
-            print("Error: Unable to decode pool membership information from JSON.")
-            exit(1)
-    except json.JSONDecodeError:
-        print("Error: Unable to decode pool information from JSON.")
-        exit(1)
-        pool_info = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print("Error: Unable to decode pool information from JSON.")
-        exit(1)
+    result = subprocess.run(['midclt', 'call', 'pool.query'], capture_output=True, text=True)
+    pool_info = json.loads(result.stdout)
     return pool_info
 
 def print_pool_info_table(pool_info):
@@ -110,23 +87,11 @@ def print_pool_info_table(pool_info):
             vdev_name = vdev.get("name", "N/A")
             vdev_type = vdev.get("type", "N/A")
             vdev_disk_count = len(vdev.get("children", []))
-    try:
-        disk_info = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print("Error: Unable to decode disk information from JSON.")
-        exit(1)
+            print(f"{vdev_name.ljust(11)} | {vdev_type.ljust(14)} | {vdev_disk_count}")
 
 def get_disk_info():
-    try:
-        result = subprocess.run(['midclt', 'call', 'disk.query'], capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Command 'midclt call disk.query' failed with error: {e}")
-        exit(1)
-    try:
-        disk_info = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print("Error: Unable to decode disk information from JSON.")
-        exit(1)
+    result = subprocess.run(['midclt', 'call', 'disk.query'], capture_output=True, text=True)
+    disk_info = json.loads(result.stdout)
     return disk_info
 
 def get_pool_membership():
@@ -143,7 +108,7 @@ def get_pool_membership():
 
 def print_disk_info_table(disk_info, pool_membership):
     print("\n### Disk Information ###")
-    fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool", "Size (GiB)"]
+    fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool"]
     max_field_length = max(len(field) for field in fields)
     max_value_length = max(len(str(disk.get(field.lower(), "N/A"))) for disk in disk_info for field in fields)
 
@@ -152,14 +117,12 @@ def print_disk_info_table(disk_info, pool_membership):
 
     for disk in disk_info:
         pool_name = pool_membership.get(disk.get("zfs_guid"), "N/A")
-        size_gib = disk.get("size", 0) / (1024 ** 3)
         values = [
             disk.get("name", "N/A"),
             disk.get("model", "N/A"),
             disk.get("serial", "N/A"),
             disk.get("zfs_guid", "N/A"),
-            pool_name,
-            f"{size_gib:.2f}"
+            pool_name
         ]
         for field, value in zip(fields, values):
             print(f"{field.ljust(max_field_length)} | {str(value).ljust(max_value_length)}")
@@ -176,20 +139,12 @@ def create_dataset(pool_name):
     }
 
     # Check if the dataset already exists
-    try:
-        result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Command 'midclt call pool.dataset.query' failed with error: {e}")
-        exit(1)
+    result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
     existing_datasets = json.loads(result.stdout)
     dataset_exists = any(ds['name'] == dataset_name for ds in existing_datasets)
-    existing_dataset_names = {ds['name'] for ds in existing_datasets}
 
-        try:
-            subprocess.run(['midclt', 'call', 'pool.dataset.create', json.dumps(dataset_config)], capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error: Command 'midclt call pool.dataset.create' failed with error: {e}")
-            exit(1)
+    if not dataset_exists:
+        subprocess.run(['midclt', 'call', 'pool.dataset.create', json.dumps(dataset_config)], capture_output=True, text=True)
         print(f"Created temporary dataset: {dataset_name}")
         # Fetch the updated dataset information
         result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
@@ -288,63 +243,54 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
         print(f"#    1M Seq Read Avg: {average_read_speed:.2f} MB/s  #")
         print("###################################")
 
-def run_disk_read_benchmark(disk_info, system_info):
+def run_disk_read_benchmark(disk_info):
     print("Running disk read benchmark...")
-    print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 2 times for each disk and averaged.")
+    print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 4 times for each disk and averaged.")
     print("This benchmark is useful for comparing disks within the same pool, to identify potential issues and bottlenecks.")
-    print("To help avoid caching, The size of the reads is determined by the smaller value between the system's RAM and the disk size.")
     results = []
 
-    system_ram_gib = system_info.get('physmem', 0) / (1024 ** 3)
-
-    def run_dd_read_command(disk_name, total_bytes):
-        print(f"Benchmarking disk: {disk_name}")
-        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count={total_bytes // 4096} status=none"
+    def run_dd_read_command(disk_name):
+        print(f"Testing disk: {disk_name}")
+        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count=13107200 status=none"  # 50 GiB in 4 KiB blocks
         start_time = time.time()
         subprocess.run(command, shell=True)
         end_time = time.time()
-        read_speed = total_bytes / 1024 / 1024 / (end_time - start_time)  # Speed in MB/s
+        total_time_taken = end_time - start_time
+        total_bytes = 50 * 1024 * 1024 * 1024  # Total bytes = 50 GiB
+        read_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         return read_speed
 
     for disk in disk_info:
         disk_name = disk.get("name", "N/A")
-        disk_size_gib = disk.get("size", 0) / (1024 ** 3)
-        total_bytes = min(system_ram_gib, disk_size_gib) * 1024 ** 3  # Total bytes to read
-
         if disk_name != "N/A":
             speeds = []
-            for _ in range(2):  # Run 2 sequential times for each disk
-                speed = run_dd_read_command(disk_name, total_bytes)
+            for _ in range(4):  # Run 4 sequential times for each disk
+                speed = run_dd_read_command(disk_name)
                 speeds.append(speed)  # Collect the speed value
             average_speed = sum(speeds) / len(speeds)
-            results.append((disk_name, speeds[0], speeds[1], average_speed))  # Report both runs and the average speed in MB/s
+            results.append((disk_name, speeds[0], speeds[1], speeds[2], speeds[3], average_speed))  # Report all 4 runs and the average speed in MB/s
 
     print("\n###################################")
     print("#         Disk Read Benchmark Results   #")
     print("###################################")
-    for disk_name, speed1, speed2, average_speed in results:
+    for disk_name, speed1, speed2, speed3, speed4, average_speed in results:
         print(f"#    Disk: {disk_name}    #")
-        print(f"#    4K Seq Read Run 1: {speed1:.2f} MB/s     #")
-        print(f"#    4K Seq Read Run 2: {speed2:.2f} MB/s     #")
-        print(f"#    4K Seq Read Avg: {average_speed:.2f} MB/s     #")
+        print(f"#    Run 1: {speed1:.2f} MB/s     #")
+        print(f"#    Run 2: {speed2:.2f} MB/s     #")
+        print(f"#    Run 3: {speed3:.2f} MB/s     #")
+        print(f"#    Run 4: {speed4:.2f} MB/s     #")
+        print(f"#    Average: {average_speed:.2f} MB/s     #")
     print("###################################")
 
 def cleanup(file_prefix, dataset_path):
     print("Cleaning up test files...")
     for file in os.listdir(dataset_path):
         if file.startswith(file_prefix) and file.endswith('.dat'):
-            try:
-                os.remove(os.path.join(dataset_path, file))
-            except OSError as e:
-                print(f"Error: {e.strerror} - {e.filename}")
+            os.remove(os.path.join(dataset_path, file))
 
 def delete_dataset(dataset_name):
     print(f"Deleting dataset: {dataset_name}")
-    try:
-        subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": dataset_name, "recursive": False, "force": False})], capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Command 'midclt call pool.dataset.delete' failed with error: {e}")
-        exit(1)
+    subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": dataset_name, "recursive": False, "force": False})], capture_output=True, text=True)
 
 if __name__ == "__main__":
     get_user_confirmation()
