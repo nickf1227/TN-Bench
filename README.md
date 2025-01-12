@@ -1,4 +1,4 @@
-# TN-Bench v1.01
+# TN-Bench v1.02
 
 TN-Bench is an OpenSource software script that benchmarks your system and collects various statistical information via the TrueNAS API. It creates a dataset in each of your pools during testing, consuming 10 GiB of space for each thread in your system.
 
@@ -28,7 +28,7 @@ Example of `arcstat -f time,hit%,dh%,ph%,mh% 10` running while the benchmark is 
 <img src="https://github.com/user-attachments/assets/4bdeea59-c88c-46b1-b17a-939594c4eda1" width="50%" />
 
 
-- **Disk Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. The first 50 GiB of data already on each disk is read in 4K chunks to `/dev/null` , making this a 4K sequential read test. 4K was chosen because `ashift=12` for all recent ZFS pools created in TrueNAS. This test used to read the first 10G of data on the disk, and was run 4 times. This was increased to 50G and is still run 4 times to increase the consistency and accuracy of this benchmark. Run-to-run variance is still expected, particularly on SSDs, as the data ends up inside of internal caches. For this reason, it is run 4 times and averaged.
+- **Disk Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. Calculated based on the size of your RAM and the disks, data already on each disk is read in 4K chunks to `/dev/null` , making this a 4K sequential read test. 4K was chosen because `ashift=12` for all recent ZFS pools created in TrueNAS. The reads are so large to try and avoid ARC caching. Run-to-run variance is still expected, particularly on SSDs, as the data ends up inside of internal caches. For this reason, it is run 4 times and averaged.
   
 - **Results**: The script displays the results for each run and the average speed. This should give you an idea of the impacts of various thread-counts (as a synthetic representation of client-counts) and the ZFS ARC caching mechanism. 
 
