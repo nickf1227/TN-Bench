@@ -249,7 +249,7 @@ def run_disk_read_benchmark(disk_info):
 
     def run_dd_read_command(disk_name, read_size_gib):
         print(f"Testing disk: {disk_name}")
-        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count={read_size_gib * 1024 * 1024 // 4} status=none"  # Read size in 4 KiB blocks
+        command = f"dd if=/dev/{disk_name} of=/dev/null bs=4K count={int(read_size_gib * 1024 * 1024 // 4)} status=none"  # Read size in 4 KiB blocks
         start_time = time.time()
         subprocess.run(command, shell=True)
         end_time = time.time()
