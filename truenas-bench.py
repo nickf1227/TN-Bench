@@ -8,13 +8,14 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.03         #")
+    print("#          TN-Bench v1.04         #")
     print("#          MONOLITHIC.            #")  
     print("#                                 #")
     print("###################################")
     print("TN-Bench is an OpenSource Software Script that uses standard tools to Benchmark your System and collect various statistical information via the TrueNAS API.")
     print("\nTN-Bench will make a Dataset in each of your pools for the purposes of this testing that will consume 10 GiB of space for every thread in your system during its run.")
     print("\nAfter which time we will prompt you to delete the dataset which was created.")
+    print("\WARNING: This test will make your system EXTREMELY slow during its run. It is recommended to run this test when no other workloads are running.")
     continue_benchmark = input("\nWould you like to continue? (yes/no): ")
     if continue_benchmark.lower() != 'yes':
         print("Exiting TN-Bench.")
