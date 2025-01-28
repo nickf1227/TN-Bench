@@ -8,7 +8,7 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.05         #")
+    print("#          TN-Bench v1.06         #")
     print("#          MONOLITHIC.            #")  
     print("#                                 #")
     print("###################################")
@@ -140,7 +140,9 @@ def print_disk_info_table(disk_info, pool_membership):
         print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
 
 def create_dataset(pool_name):
-    dataset_name = f"{pool_name}/tn-bench"
+    # Escape spaces in the pool name
+    escaped_pool_name = pool_name.replace(" ", "\\ ")
+    dataset_name = f"{escaped_pool_name}/tn-bench"
     dataset_config = {
         "name": dataset_name,
         "recordsize": "1M",
@@ -150,20 +152,34 @@ def create_dataset(pool_name):
 
     # Check if the dataset already exists
     result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error querying datasets: {result.stderr}")
+        return None
+
     existing_datasets = json.loads(result.stdout)
     dataset_exists = any(ds['name'] == dataset_name for ds in existing_datasets)
 
     if not dataset_exists:
-        subprocess.run(['midclt', 'call', 'pool.dataset.create', json.dumps(dataset_config)], capture_output=True, text=True)
+        result = subprocess.run(['midclt', 'call', 'pool.dataset.create', json.dumps(dataset_config)], capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Error creating dataset {dataset_name}: {result.stderr}")
+            return None
         print(f"Created temporary dataset: {dataset_name}")
+
         # Fetch the updated dataset information
         result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Error querying datasets after creation: {result.stderr}")
+            return None
         existing_datasets = json.loads(result.stdout)
 
     # Return the mountpoint of the dataset
     for ds in existing_datasets:
         if ds['name'] == dataset_name:
+            print(f"Dataset {dataset_name} created successfully.")
             return ds['mountpoint']
+    
+    print(f"Dataset {dataset_name} was not found after creation.")
     return None
 
 def run_dd_command(command):
@@ -228,6 +244,8 @@ def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, datas
     return speeds[0], speeds[1], average_read_speed
 
 def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file_prefix, dataset_path):
+    # Escape spaces in the pool name
+    escaped_pool_name = pool_name.replace(" ", "\\ ")
     thread_counts = [1, cores // 4, cores // 2, cores]
     results = []
 
@@ -237,7 +255,7 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
         results.append((threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed))
 
     print(f"\n###################################")
-    print(f"#         DD Benchmark Results for Pool: {pool_name}    #")
+    print(f"#         DD Benchmark Results for Pool: {escaped_pool_name}    #")
     print("###################################")
     for threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed in results:
         print(f"#    Threads: {threads}    #")
@@ -295,13 +313,17 @@ def run_disk_read_benchmark(disk_info):
 
 def cleanup(file_prefix, dataset_path):
     print("Cleaning up test files...")
-    for file in os.listdir(dataset_path):
+    # Escape spaces in the dataset path
+    escaped_dataset_path = dataset_path.replace(" ", "\\ ")
+    for file in os.listdir(escaped_dataset_path):
         if file.startswith(file_prefix) and file.endswith('.dat'):
-            os.remove(os.path.join(dataset_path, file))
+            os.remove(os.path.join(escaped_dataset_path, file))
 
 def delete_dataset(dataset_name):
-    print(f"Deleting dataset: {dataset_name}")
-    subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": dataset_name, "recursive": False, "force": False})], capture_output=True, text=True)
+    # Escape spaces in the dataset name
+    escaped_dataset_name = dataset_name.replace(" ", "\\ ")
+    print(f"Deleting dataset: {escaped_dataset_name}")
+    subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": escaped_dataset_name, "recursive": False, "force": False})], capture_output=True, text=True)
 
 if __name__ == "__main__":
     get_user_confirmation()
