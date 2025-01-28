@@ -15,10 +15,10 @@ TN-Bench is an OpenSource software script that benchmarks your system and collec
    git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench.py
    ```
 
-### NEW for v1.06 Running the Script with 128K block size
+### NEW for v1.06 Running the Script with 1M Block size and ZSTD Compression
 
    ```
-   git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench-128k.py
+   git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench-zstd.py
    ```
 
 
