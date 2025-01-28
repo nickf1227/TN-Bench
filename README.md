@@ -15,12 +15,19 @@ TN-Bench is an OpenSource software script that benchmarks your system and collec
    git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench.py
    ```
 
-### NEW for v1.06 Running the Script with 1M Block size and ZSTD Compression
+### NEW for v1.06 Running the Script with 1M Block size and zstd Compression
+
+   ```
+   git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench-zstd.py
+
+   ```
+### NEW for v1.06 Running the Script with 1M Block size and lz4 Compression
 
    ```
    git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench-zstd.py
    ```
 
+NOTE: `/dev/urandom` generates inherently uncompressible data, the the value of the compression options above is minimal in the current form.
 
 The script will display system and pool information, then prompt you to continue with the benchmarks. Follow the prompts to complete the benchmarking process.
 
