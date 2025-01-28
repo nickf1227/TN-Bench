@@ -12,7 +12,7 @@ TN-Bench is an OpenSource software script that benchmarks your system and collec
 ### Running the Script
 
    ```
-   git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench.py
+   git clone -b monolithic-version-1.05 https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench.py
    ```
 The script will display system and pool information, then prompt you to continue with the benchmarks. Follow the prompts to complete the benchmarking process.
 
