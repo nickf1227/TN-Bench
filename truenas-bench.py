@@ -341,7 +341,7 @@ if __name__ == "__main__":
     print_disk_info_table(disk_info, pool_membership)
 
     cores = system_info.get("cores", 1)
-    bytes_per_thread_series_1 = 10240
+    bytes_per_thread_series_1 = 20480
     block_size_series_1 = "1M"
     file_prefix_series_1 = "file_"
 
