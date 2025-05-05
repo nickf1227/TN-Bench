@@ -8,8 +8,8 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.05         #")
-    print("#          MONOLITHIC.            #")  
+    print("#          TN-Bench v1.07         #")
+    print("#          MONOLITHIC.            #")
     print("#                                 #")
     print("###################################")
     print("TN-Bench is an OpenSource Software Script that uses standard tools to Benchmark your System and collect various statistical information via the TrueNAS API.")
@@ -140,7 +140,9 @@ def print_disk_info_table(disk_info, pool_membership):
         print(f"{'-' * max_field_length}-+-{'-' * max_value_length}")
 
 def create_dataset(pool_name):
-    dataset_name = f"{pool_name}/tn-bench"
+    # Escape spaces in the pool name
+    escaped_pool_name = pool_name.replace(" ", "\\ ")
+    dataset_name = f"{escaped_pool_name}/tn-bench"
     dataset_config = {
         "name": dataset_name,
         "recordsize": "1M",
@@ -150,20 +152,34 @@ def create_dataset(pool_name):
 
     # Check if the dataset already exists
     result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error querying datasets: {result.stderr}")
+        return None
+
     existing_datasets = json.loads(result.stdout)
     dataset_exists = any(ds['name'] == dataset_name for ds in existing_datasets)
 
     if not dataset_exists:
-        subprocess.run(['midclt', 'call', 'pool.dataset.create', json.dumps(dataset_config)], capture_output=True, text=True)
+        result = subprocess.run(['midclt', 'call', 'pool.dataset.create', json.dumps(dataset_config)], capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Error creating dataset {dataset_name}: {result.stderr}")
+            return None
         print(f"Created temporary dataset: {dataset_name}")
+
         # Fetch the updated dataset information
         result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Error querying datasets after creation: {result.stderr}")
+            return None
         existing_datasets = json.loads(result.stdout)
 
     # Return the mountpoint of the dataset
     for ds in existing_datasets:
         if ds['name'] == dataset_name:
+            print(f"Dataset {dataset_name} created successfully.")
             return ds['mountpoint']
+    
+    print(f"Dataset {dataset_name} was not found after creation.")
     return None
 
 def run_dd_command(command):
@@ -178,7 +194,7 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
         threads_list = []
         for i in range(threads):
-            command = f"dd if=/dev/urandom of={dataset_path}/{file_prefix}{i}.dat bs={block_size} count={bytes_per_thread * 2} status=none"  # Double the size
+            command = f"dd if=/dev/urandom of={dataset_path}/{file_prefix}{i}.dat bs={block_size} count={bytes_per_thread} status=none"
             thread = threading.Thread(target=run_dd_command, args=(command,))
             thread.start()
             threads_list.append(thread)
@@ -188,7 +204,7 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = threads * bytes_per_thread * 2 * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes) * 2
+        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes)
 
         write_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         speeds.append(write_speed)
@@ -228,6 +244,8 @@ def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, datas
     return speeds[0], speeds[1], average_read_speed
 
 def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file_prefix, dataset_path):
+    # Escape spaces in the pool name
+    escaped_pool_name = pool_name.replace(" ", "\\ ")
     thread_counts = [1, cores // 4, cores // 2, cores]
     results = []
 
@@ -237,7 +255,7 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
         results.append((threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed))
 
     print(f"\n###################################")
-    print(f"#         DD Benchmark Results for Pool: {pool_name}    #")
+    print(f"#         DD Benchmark Results for Pool: {escaped_pool_name}    #")
     print("###################################")
     for threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed in results:
         print(f"#    Threads: {threads}    #")
@@ -295,18 +313,62 @@ def run_disk_read_benchmark(disk_info):
 
 def cleanup(file_prefix, dataset_path):
     print("Cleaning up test files...")
-    for file in os.listdir(dataset_path):
+    # Escape spaces in the dataset path
+    escaped_dataset_path = dataset_path.replace(" ", "\\ ")
+    for file in os.listdir(escaped_dataset_path):
         if file.startswith(file_prefix) and file.endswith('.dat'):
-            os.remove(os.path.join(dataset_path, file))
+            os.remove(os.path.join(escaped_dataset_path, file))
 
 def delete_dataset(dataset_name):
-    print(f"Deleting dataset: {dataset_name}")
-    subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": dataset_name, "recursive": False, "force": False})], capture_output=True, text=True)
+    # Escape spaces in the dataset name
+    escaped_dataset_name = dataset_name.replace(" ", "\\ ")
+    print(f"Deleting dataset: {escaped_dataset_name}")
+    subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": escaped_dataset_name, "recursive": False, "force": False})], capture_output=True, text=True)
+
+def get_dataset_available_bytes(pool_name):
+    dataset_name = f"{pool_name}/tn-bench"
+    result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error querying datasets: {result.stderr}")
+        return 0
+    try:
+        datasets = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        print("Failed to parse dataset query result.")
+        return 0
+    for ds in datasets:
+        if ds.get('name') == dataset_name:
+            available_info = ds.get('available', {})
+            # Use 'parsed' value if available (exact bytes)
+            parsed_bytes = available_info.get('parsed')
+            if parsed_bytes is not None:
+                return parsed_bytes
+            # Fallback to parsing 'value' string (e.g., "3.07T")
+            value_str = available_info.get('value', '0')
+            try:
+                # Extract numeric part and unit
+                unit = value_str[-1] if value_str[-1] in {'T', 'G', 'M', 'K', 'B'} else 'B'
+                numeric_part = value_str[:-1] if unit != 'B' else value_str
+                numeric_value = float(numeric_part)
+                # Convert to bytes based on unit
+                unit_multipliers = {
+                    'T': 1024 ** 4,
+                    'G': 1024 ** 3,
+                    'M': 1024 ** 2,
+                    'K': 1024,
+                    'B': 1
+                }
+                return int(numeric_value * unit_multipliers[unit])
+            except (ValueError, KeyError):
+                print(f"Invalid value for available bytes: {value_str}")
+                return 0
+    print(f"Dataset {dataset_name} not found.")
+    return 0
 
 if __name__ == "__main__":
     get_user_confirmation()
     
-    start_time = time.time()  # Start the timer
+    start_time = time.time()
 
     system_info = get_system_info()
     print_system_info_table(system_info)
@@ -318,6 +380,45 @@ if __name__ == "__main__":
     pool_membership = get_pool_membership()
     print_disk_info_table(disk_info, pool_membership)
 
+    cores = system_info.get("cores", 1)
+    bytes_per_thread_series_1 = 20480  # 20 GiB per thread (1M * 20480)
+    block_size_series_1 = "1M"
+    file_prefix_series_1 = "file_"
+
+    print("\n###################################")
+    print("#       DD Benchmark Starting     #")
+    print("###################################")
+    print(f"Using {cores} threads for the benchmark.\n")
+
+for pool in pool_info:
+    pool_name = pool.get('name', 'N/A')
+    print(f"\nCreating test dataset for pool: {pool_name}")
+    dataset_path = create_dataset(pool_name)
+    if dataset_path:
+        # Check available space
+        available_bytes = get_dataset_available_bytes(pool_name)
+        required_bytes = 20 * cores * (1024 ** 3)  # 20 GiB per thread * cores
+        
+        # Convert to GiB for display
+        available_gib = available_bytes / (1024 ** 3)
+        required_gib = 20 * cores
+        
+        print(f"\n=== Space Verification ===")
+        print(f"Available space: {available_gib:.2f} GiB")
+        print(f"Space required:  {required_gib:.2f} GiB (20 GiB/thread × {cores} threads)")
+        
+        if available_bytes < required_bytes:
+            print(f"\n WARNING: Insufficient space in dataset {pool_name}/tn-bench")
+            print(f"Minimum required: {required_gib} GiB")
+            print(f"Available:        {available_gib:.2f} GiB")
+            proceed = input("\nProceeding may cause benchmark failures. Continue anyway? (yes/no): ")
+            if proceed.lower() != 'yes':
+                print(f"Skipping benchmarks for pool {pool_name}")
+                delete_dataset(f"{pool_name}/tn-bench")
+                continue
+
+        print(f"\n Sufficient space available - proceeding with benchmarks...")
+        
     cores = system_info.get("cores", 1)
     bytes_per_thread_series_1 = 10240
     block_size_series_1 = "1M"
