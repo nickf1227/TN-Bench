@@ -125,7 +125,7 @@ def print_disk_info_table(disk_info, pool_membership):
 
     for disk in disk_info:
         pool_name = pool_membership.get(disk.get("zfs_guid"), "N/A")
-        size_gib = disk.get("size", 0) / (1024 ** 3)
+        size_gib = (disk.get("size", 0) or 0) / (1024 ** 3)
         values = [
             disk.get("name", "N/A"),
             disk.get("model", "N/A"),
@@ -339,11 +339,31 @@ def get_dataset_available_bytes(pool_name):
     for ds in datasets:
         if ds.get('name') == dataset_name:
             available_info = ds.get('available', {})
-            return available_info.get('value', 0)
+            # Use 'parsed' value if available (exact bytes)
+            parsed_bytes = available_info.get('parsed')
+            if parsed_bytes is not None:
+                return parsed_bytes
+            # Fallback to parsing 'value' string (e.g., "3.07T")
+            value_str = available_info.get('value', '0')
+            try:
+                # Extract numeric part and unit
+                unit = value_str[-1] if value_str[-1] in {'T', 'G', 'M', 'K', 'B'} else 'B'
+                numeric_part = value_str[:-1] if unit != 'B' else value_str
+                numeric_value = float(numeric_part)
+                # Convert to bytes based on unit
+                unit_multipliers = {
+                    'T': 1024 ** 4,
+                    'G': 1024 ** 3,
+                    'M': 1024 ** 2,
+                    'K': 1024,
+                    'B': 1
+                }
+                return int(numeric_value * unit_multipliers[unit])
+            except (ValueError, KeyError):
+                print(f"Invalid value for available bytes: {value_str}")
+                return 0
     print(f"Dataset {dataset_name} not found.")
     return 0
-
-# Modify the main loop section in the __main__ block:
 
 if __name__ == "__main__":
     get_user_confirmation()
@@ -399,13 +419,34 @@ for pool in pool_info:
 
         print(f"\n Sufficient space available - proceeding with benchmarks...")
         
-        # Existing benchmark code...
-        run_benchmarks_for_pool(pool_name, cores, bytes_per_thread_series_1, block_size_series_1, file_prefix_series_1, dataset_path)
-        cleanup(file_prefix_series_1, dataset_path)
+    cores = system_info.get("cores", 1)
+    bytes_per_thread_series_1 = 10240
+    block_size_series_1 = "1M"
+    file_prefix_series_1 = "file_"
 
-    end_time = time.time()
+    print("\n###################################")
+    print("#                                 #")
+    print("#       DD Benchmark Starting     #")
+    print("#                                 #")
+    print("###################################")
+    print(f"Using {cores} threads for the benchmark.\n")
+
+    for pool in pool_info:
+        pool_name = pool.get('name', 'N/A')
+        print(f"\nCreating test dataset for pool: {pool_name}")
+        dataset_name = f"{pool_name}/tn-bench"
+        dataset_path = create_dataset(pool_name)
+        if dataset_path:
+            print(f"\nRunning benchmarks for pool: {pool_name}")
+            run_benchmarks_for_pool(pool_name, cores, bytes_per_thread_series_1, block_size_series_1, file_prefix_series_1, dataset_path)
+            cleanup(file_prefix_series_1, dataset_path)
+
+    run_disk_read_benchmark(disk_info)
+
+    end_time = time.time()  # End the timer
     total_time_taken = end_time - start_time
     total_time_taken_minutes = total_time_taken / 60
+
     print(f"\nTotal benchmark time: {total_time_taken_minutes:.2f} minutes")
 
     for pool in pool_info:
