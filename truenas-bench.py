@@ -370,7 +370,7 @@ if __name__ == "__main__":
     print("###################################")
     print(f"Using {cores} threads for the benchmark.\n")
 
-    for pool in pool_info:
+for pool in pool_info:
     pool_name = pool.get('name', 'N/A')
     print(f"\nCreating test dataset for pool: {pool_name}")
     dataset_path = create_dataset(pool_name)
@@ -398,12 +398,10 @@ if __name__ == "__main__":
                 continue
 
         print(f"\n Sufficient space available - proceeding with benchmarks...")
-
-            print(f"\nRunning benchmarks for pool: {pool_name}")
-            run_benchmarks_for_pool(pool_name, cores, bytes_per_thread_series_1, block_size_series_1, file_prefix_series_1, dataset_path)
-            cleanup(file_prefix_series_1, dataset_path)
-
-    run_disk_read_benchmark(disk_info)
+        
+        # Existing benchmark code...
+        run_benchmarks_for_pool(pool_name, cores, bytes_per_thread_series_1, block_size_series_1, file_prefix_series_1, dataset_path)
+        cleanup(file_prefix_series_1, dataset_path)
 
     end_time = time.time()
     total_time_taken = end_time - start_time
