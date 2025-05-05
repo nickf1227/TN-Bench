@@ -8,8 +8,8 @@ import time
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.06         #")
-    print("#          MONOLITHIC.            #")  
+    print("#          TN-Bench v1.07         #")
+    print("#          MONOLITHIC.            #")
     print("#                                 #")
     print("###################################")
     print("TN-Bench is an OpenSource Software Script that uses standard tools to Benchmark your System and collect various statistical information via the TrueNAS API.")
@@ -194,7 +194,7 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
         threads_list = []
         for i in range(threads):
-            command = f"dd if=/dev/urandom of={dataset_path}/{file_prefix}{i}.dat bs={block_size} count={bytes_per_thread * 2} status=none"  # Double the size
+            command = f"dd if=/dev/urandom of={dataset_path}/{file_prefix}{i}.dat bs={block_size} count={bytes_per_thread} status=none"
             thread = threading.Thread(target=run_dd_command, args=(command,))
             thread.start()
             threads_list.append(thread)
@@ -204,7 +204,7 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes) * 2
+        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes)
 
         write_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         speeds.append(write_speed)
@@ -325,10 +325,30 @@ def delete_dataset(dataset_name):
     print(f"Deleting dataset: {escaped_dataset_name}")
     subprocess.run(['midclt', 'call', 'pool.dataset.delete', json.dumps({"id": escaped_dataset_name, "recursive": False, "force": False})], capture_output=True, text=True)
 
+def get_dataset_available_bytes(pool_name):
+    dataset_name = f"{pool_name}/tn-bench"
+    result = subprocess.run(['midclt', 'call', 'pool.dataset.query'], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error querying datasets: {result.stderr}")
+        return 0
+    try:
+        datasets = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        print("Failed to parse dataset query result.")
+        return 0
+    for ds in datasets:
+        if ds.get('name') == dataset_name:
+            available_info = ds.get('available', {})
+            return available_info.get('value', 0)
+    print(f"Dataset {dataset_name} not found.")
+    return 0
+
+# Modify the main loop section in the __main__ block:
+
 if __name__ == "__main__":
     get_user_confirmation()
     
-    start_time = time.time()  # Start the timer
+    start_time = time.time()
 
     system_info = get_system_info()
     print_system_info_table(system_info)
@@ -341,33 +361,53 @@ if __name__ == "__main__":
     print_disk_info_table(disk_info, pool_membership)
 
     cores = system_info.get("cores", 1)
-    bytes_per_thread_series_1 = 20480
+    bytes_per_thread_series_1 = 20480  # 20 GiB per thread (1M * 20480)
     block_size_series_1 = "1M"
     file_prefix_series_1 = "file_"
 
     print("\n###################################")
-    print("#                                 #")
     print("#       DD Benchmark Starting     #")
-    print("#                                 #")
     print("###################################")
     print(f"Using {cores} threads for the benchmark.\n")
 
     for pool in pool_info:
-        pool_name = pool.get('name', 'N/A')
-        print(f"\nCreating test dataset for pool: {pool_name}")
-        dataset_name = f"{pool_name}/tn-bench"
-        dataset_path = create_dataset(pool_name)
-        if dataset_path:
+    pool_name = pool.get('name', 'N/A')
+    print(f"\nCreating test dataset for pool: {pool_name}")
+    dataset_path = create_dataset(pool_name)
+    if dataset_path:
+        # Check available space
+        available_bytes = get_dataset_available_bytes(pool_name)
+        required_bytes = 20 * cores * (1024 ** 3)  # 20 GiB per thread * cores
+        
+        # Convert to GiB for display
+        available_gib = available_bytes / (1024 ** 3)
+        required_gib = 20 * cores
+        
+        print(f"\n=== Space Verification ===")
+        print(f"Available space: {available_gib:.2f} GiB")
+        print(f"Space required:  {required_gib:.2f} GiB (20 GiB/thread × {cores} threads)")
+        
+        if available_bytes < required_bytes:
+            print(f"\n WARNING: Insufficient space in dataset {pool_name}/tn-bench")
+            print(f"Minimum required: {required_gib} GiB")
+            print(f"Available:        {available_gib:.2f} GiB")
+            proceed = input("\nProceeding may cause benchmark failures. Continue anyway? (yes/no): ")
+            if proceed.lower() != 'yes':
+                print(f"Skipping benchmarks for pool {pool_name}")
+                delete_dataset(f"{pool_name}/tn-bench")
+                continue
+
+        print(f"\n Sufficient space available - proceeding with benchmarks...")
+
             print(f"\nRunning benchmarks for pool: {pool_name}")
             run_benchmarks_for_pool(pool_name, cores, bytes_per_thread_series_1, block_size_series_1, file_prefix_series_1, dataset_path)
             cleanup(file_prefix_series_1, dataset_path)
 
     run_disk_read_benchmark(disk_info)
 
-    end_time = time.time()  # End the timer
+    end_time = time.time()
     total_time_taken = end_time - start_time
     total_time_taken_minutes = total_time_taken / 60
-
     print(f"\nTotal benchmark time: {total_time_taken_minutes:.2f} minutes")
 
     for pool in pool_info:
