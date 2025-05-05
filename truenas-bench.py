@@ -204,7 +204,7 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = threads * bytes_per_thread * 2 * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes) * 2
+        total_bytes = threads * bytes_per_thread * 1024 * 1024  # Total bytes = threads * bytes per thread (in bytes) * 2
 
         write_speed = total_bytes / 1024 / 1024 / total_time_taken  # Speed in MB/s
         speeds.append(write_speed)
