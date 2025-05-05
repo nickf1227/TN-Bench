@@ -125,7 +125,7 @@ def print_disk_info_table(disk_info, pool_membership):
 
     for disk in disk_info:
         pool_name = pool_membership.get(disk.get("zfs_guid"), "N/A")
-        size_gib = disk.get("size", 0) / (1024 ** 3)
+        size_gib = (disk.get("size", 0) or 0) / (1024 ** 3)
         values = [
             disk.get("name", "N/A"),
             disk.get("model", "N/A"),
