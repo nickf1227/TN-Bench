@@ -53,7 +53,7 @@ After the benchmarking is complete, the script prompts you to delete the dataset
 
 ###################################
 #                                 #
-#          TN-Bench v1.06         #
+#          TN-Bench v1.07         #
 #          MONOLITHIC.            #
 #                                 #
 ###################################
@@ -74,26 +74,26 @@ NOTE: Setting it back to 0 will restore the default behavior, but the system wil
 Would you like to continue? (yes/no): yes
 
 ### System Information ###
-Field                 | Value                                       
-----------------------+---------------------------------------------
-Version               | TrueNAS-SCALE-25.04.0-MASTER-20250118-155243
-Load Average (1m)     | 0.26123046875                               
-Load Average (5m)     | 0.22216796875                               
-Load Average (15m)    | 0.185546875                                 
-Model                 | AMD Ryzen 5 5600G with Radeon Graphics      
-Cores                 | 12                                          
-Physical Cores        | 6                                           
-System Product        | X570 AORUS ELITE                            
-Physical Memory (GiB) | 30.75                                       
+Field                 | Value
+----------------------+---------------------------------------
+Version               | 25.04.0
+Load Average (1m)     | 0.1220703125
+Load Average (5m)     | 0.2275390625
+Load Average (15m)    | 0.25244140625
+Model                 | AMD Ryzen 5 5600G with Radeon Graphics
+Cores                 | 12
+Physical Cores        | 6
+System Product        | X570 AORUS ELITE
+Physical Memory (GiB) | 30.75
 
 ### Pool Information ###
-Field      | Value       
+Field      | Value
 -----------+-------------
-Name       | inferno     
+Name       | inferno
 Path       | /mnt/inferno
-Status     | ONLINE      
-VDEV Count | 1           
-Disk Count | 5           
+Status     | ONLINE
+VDEV Count | 1
+Disk Count | 5
 
 VDEV Name  | Type           | Disk Count
 -----------+----------------+---------------
@@ -104,56 +104,72 @@ raidz1-0    | RAIDZ1         | 5
 
 NOTE: The TrueNAS API will return N/A for the Pool for the boot device(s) as well as any disk is not a member of a pool.
 ###################################
-Field      | Value                     
+Field      | Value
 -----------+---------------------------
-Name       | nvme0n1                   
-Model      | INTEL SSDPE21D960GA       
-Serial     | PHM29081000X960CGN        
-ZFS GUID   | 212601209224793468        
-Pool       | inferno                   
-Size (GiB) | 894.25                    
------------+---------------------------
------------+---------------------------
-Name       | nvme3n1                   
-Model      | INTEL SSDPE21D960GA       
-Serial     | PHM2913000QM960CGN        
-ZFS GUID   | 16221756077833732578      
-Pool       | inferno                   
-Size (GiB) | 894.25                    
+Name       | nvme0n1
+Model      | INTEL SSDPE21D960GA
+Serial     | PHM29081000X960CGN
+ZFS GUID   | 212601209224793468
+Pool       | inferno
+Size (GiB) | 894.25
 -----------+---------------------------
 -----------+---------------------------
-Name       | nvme5n1                   
-Model      | INTEL SSDPE21D960GA       
-Serial     | PHM2913000YF960CGN        
-ZFS GUID   | 8625327235819249102       
-Pool       | inferno                   
-Size (GiB) | 894.25                    
+Name       | nvme2n1
+Model      | INTEL SSDPE21D960GA
+Serial     | PHM2913000QM960CGN
+ZFS GUID   | 16221756077833732578
+Pool       | inferno
+Size (GiB) | 894.25
 -----------+---------------------------
 -----------+---------------------------
-Name       | nvme2n1                   
-Model      | INTEL SSDPE21D960GA       
-Serial     | PHM2913000DC960CGN        
-ZFS GUID   | 11750420763846093416      
-Pool       | inferno                   
-Size (GiB) | 894.25                    
+Name       | nvme4n1
+Model      | INTEL SSDPE21D960GA
+Serial     | PHM2913000YF960CGN
+ZFS GUID   | 8625327235819249102
+Pool       | inferno
+Size (GiB) | 894.25
 -----------+---------------------------
 -----------+---------------------------
-Name       | nvme4n1                   
+Name       | nvme5n1
+Model      | INTEL SSDPE21D960GA
+Serial     | PHM2913000DC960CGN
+ZFS GUID   | 11750420763846093416
+Pool       | inferno
+Size (GiB) | 894.25
+-----------+---------------------------
+-----------+---------------------------
+Name       | nvme3n1
 Model      | SAMSUNG MZVL2512HCJQ-00BL7
-Serial     | S64KNX2T216015            
-ZFS GUID   | None                      
-Pool       | N/A                       
-Size (GiB) | 476.94                    
+Serial     | S64KNX2T216015
+ZFS GUID   | None
+Pool       | N/A
+Size (GiB) | 476.94
 -----------+---------------------------
 -----------+---------------------------
-Name       | nvme1n1                   
-Model      | INTEL SSDPE21D960GA       
-Serial     | PHM2908101QG960CGN        
-ZFS GUID   | 10743034860780890768      
-Pool       | inferno                   
-Size (GiB) | 894.25                    
+Name       | nvme1n1
+Model      | INTEL SSDPE21D960GA
+Serial     | PHM2908101QG960CGN
+ZFS GUID   | 10743034860780890768
+Pool       | inferno
+Size (GiB) | 894.25
 -----------+---------------------------
 -----------+---------------------------
+
+###################################
+#       DD Benchmark Starting     #
+###################################
+Using 12 threads for the benchmark.
+
+
+Creating test dataset for pool: inferno
+Created temporary dataset: inferno/tn-bench
+Dataset inferno/tn-bench created successfully.
+
+=== Space Verification ===
+Available space: 765.37 GiB
+Space required:  240.00 GiB (20 GiB/thread × 12 threads)
+
+ Sufficient space available - proceeding with benchmarks...
 
 ###################################
 #                                 #
@@ -168,72 +184,72 @@ Dataset inferno/tn-bench created successfully.
 
 Running benchmarks for pool: inferno
 Running DD write benchmark with 1 threads...
-Run 1 write speed: 410.96 MB/s
-Run 2 write speed: 410.95 MB/s
-Average write speed: 410.96 MB/s
+Run 1 write speed: 408.21 MB/s
+Run 2 write speed: 404.35 MB/s
+Average write speed: 406.28 MB/s
 Running DD read benchmark with 1 threads...
-Run 1 read speed: 4204.60 MB/s
-Run 2 read speed: 5508.72 MB/s
-Average read speed: 4856.66 MB/s
+Run 1 read speed: 10529.35 MB/s
+Run 2 read speed: 14742.91 MB/s
+Average read speed: 12636.13 MB/s
 Running DD write benchmark with 3 threads...
-Run 1 write speed: 1179.53 MB/s
-Run 2 write speed: 1165.82 MB/s
-Average write speed: 1172.67 MB/s
+Run 1 write speed: 1145.73 MB/s
+Run 2 write speed: 1141.83 MB/s
+Average write speed: 1143.78 MB/s
 Running DD read benchmark with 3 threads...
-Run 1 read speed: 4260.03 MB/s
-Run 2 read speed: 4275.41 MB/s
-Average read speed: 4267.72 MB/s
+Run 1 read speed: 8261.30 MB/s
+Run 2 read speed: 8395.17 MB/s
+Average read speed: 8328.24 MB/s
 Running DD write benchmark with 6 threads...
-Run 1 write speed: 1971.18 MB/s
-Run 2 write speed: 1936.90 MB/s
-Average write speed: 1954.04 MB/s
+Run 1 write speed: 1838.74 MB/s
+Run 2 write speed: 1846.15 MB/s
+Average write speed: 1842.44 MB/s
 Running DD read benchmark with 6 threads...
-Run 1 read speed: 4237.76 MB/s
-Run 2 read speed: 4240.26 MB/s
-Average read speed: 4239.01 MB/s
+Run 1 read speed: 8424.02 MB/s
+Run 2 read speed: 8464.73 MB/s
+Average read speed: 8444.38 MB/s
 Running DD write benchmark with 12 threads...
-Run 1 write speed: 2049.01 MB/s
-Run 2 write speed: 1940.13 MB/s
-Average write speed: 1994.57 MB/s
+Run 1 write speed: 2217.72 MB/s
+Run 2 write speed: 2247.58 MB/s
+Average write speed: 2232.65 MB/s
 Running DD read benchmark with 12 threads...
-Run 1 read speed: 4087.74 MB/s
-Run 2 read speed: 4092.10 MB/s
-Average read speed: 4089.92 MB/s
+Run 1 read speed: 8469.45 MB/s
+Run 2 read speed: 8508.80 MB/s
+Average read speed: 8489.13 MB/s
 
 ###################################
 #         DD Benchmark Results for Pool: inferno    #
 ###################################
 #    Threads: 1    #
-#    1M Seq Write Run 1: 410.96 MB/s     #
-#    1M Seq Write Run 2: 410.95 MB/s     #
-#    1M Seq Write Avg: 410.96 MB/s #
-#    1M Seq Read Run 1: 4204.60 MB/s      #
-#    1M Seq Read Run 2: 5508.72 MB/s      #
-#    1M Seq Read Avg: 4856.66 MB/s  #
+#    1M Seq Write Run 1: 408.21 MB/s     #
+#    1M Seq Write Run 2: 404.35 MB/s     #
+#    1M Seq Write Avg: 406.28 MB/s #
+#    1M Seq Read Run 1: 10529.35 MB/s      #
+#    1M Seq Read Run 2: 14742.91 MB/s      #
+#    1M Seq Read Avg: 12636.13 MB/s  #
 ###################################
 #    Threads: 3    #
-#    1M Seq Write Run 1: 1179.53 MB/s     #
-#    1M Seq Write Run 2: 1165.82 MB/s     #
-#    1M Seq Write Avg: 1172.67 MB/s #
-#    1M Seq Read Run 1: 4260.03 MB/s      #
-#    1M Seq Read Run 2: 4275.41 MB/s      #
-#    1M Seq Read Avg: 4267.72 MB/s  #
+#    1M Seq Write Run 1: 1145.73 MB/s     #
+#    1M Seq Write Run 2: 1141.83 MB/s     #
+#    1M Seq Write Avg: 1143.78 MB/s #
+#    1M Seq Read Run 1: 8261.30 MB/s      #
+#    1M Seq Read Run 2: 8395.17 MB/s      #
+#    1M Seq Read Avg: 8328.24 MB/s  #
 ###################################
 #    Threads: 6    #
-#    1M Seq Write Run 1: 1971.18 MB/s     #
-#    1M Seq Write Run 2: 1936.90 MB/s     #
-#    1M Seq Write Avg: 1954.04 MB/s #
-#    1M Seq Read Run 1: 4237.76 MB/s      #
-#    1M Seq Read Run 2: 4240.26 MB/s      #
-#    1M Seq Read Avg: 4239.01 MB/s  #
+#    1M Seq Write Run 1: 1838.74 MB/s     #
+#    1M Seq Write Run 2: 1846.15 MB/s     #
+#    1M Seq Write Avg: 1842.44 MB/s #
+#    1M Seq Read Run 1: 8424.02 MB/s      #
+#    1M Seq Read Run 2: 8464.73 MB/s      #
+#    1M Seq Read Avg: 8444.38 MB/s  #
 ###################################
 #    Threads: 12    #
-#    1M Seq Write Run 1: 2049.01 MB/s     #
-#    1M Seq Write Run 2: 1940.13 MB/s     #
-#    1M Seq Write Avg: 1994.57 MB/s #
-#    1M Seq Read Run 1: 4087.74 MB/s      #
-#    1M Seq Read Run 2: 4092.10 MB/s      #
-#    1M Seq Read Avg: 4089.92 MB/s  #
+#    1M Seq Write Run 1: 2217.72 MB/s     #
+#    1M Seq Write Run 2: 2247.58 MB/s     #
+#    1M Seq Write Avg: 2232.65 MB/s #
+#    1M Seq Read Run 1: 8469.45 MB/s      #
+#    1M Seq Read Run 2: 8508.80 MB/s      #
+#    1M Seq Read Avg: 8489.13 MB/s  #
 ###################################
 Cleaning up test files...
 Running disk read benchmark...
@@ -243,14 +259,14 @@ In order to work around ARC caching in systems with it still enabled, This bench
 ###################################
 Testing disk: nvme0n1
 Testing disk: nvme0n1
-Testing disk: nvme3n1
-Testing disk: nvme3n1
-Testing disk: nvme5n1
-Testing disk: nvme5n1
 Testing disk: nvme2n1
 Testing disk: nvme2n1
 Testing disk: nvme4n1
 Testing disk: nvme4n1
+Testing disk: nvme5n1
+Testing disk: nvme5n1
+Testing disk: nvme3n1
+Testing disk: nvme3n1
 Testing disk: nvme1n1
 Testing disk: nvme1n1
 
@@ -258,35 +274,32 @@ Testing disk: nvme1n1
 #         Disk Read Benchmark Results   #
 ###################################
 #    Disk: nvme0n1    #
-#    Run 1: 2017.87 MB/s     #
-#    Run 2: 1924.79 MB/s     #
-#    Average: 1971.33 MB/s     #
-#    Disk: nvme3n1    #
-#    Run 1: 2008.92 MB/s     #
-#    Run 2: 1911.36 MB/s     #
-#    Average: 1960.14 MB/s     #
-#    Disk: nvme5n1    #
-#    Run 1: 2044.10 MB/s     #
-#    Run 2: 1944.96 MB/s     #
-#    Average: 1994.53 MB/s     #
+#    Run 1: 1735.62 MB/s     #
+#    Run 2: 1543.09 MB/s     #
+#    Average: 1639.36 MB/s     #
 #    Disk: nvme2n1    #
-#    Run 1: 2039.12 MB/s     #
-#    Run 2: 1943.66 MB/s     #
-#    Average: 1991.39 MB/s     #
+#    Run 1: 1526.69 MB/s     #
+#    Run 2: 1432.16 MB/s     #
+#    Average: 1479.42 MB/s     #
 #    Disk: nvme4n1    #
-#    Run 1: 1927.49 MB/s     #
-#    Run 2: 1828.96 MB/s     #
-#    Average: 1878.23 MB/s     #
+#    Run 1: 1523.02 MB/s     #
+#    Run 2: 1412.82 MB/s     #
+#    Average: 1467.92 MB/s     #
+#    Disk: nvme5n1    #
+#    Run 1: 1523.86 MB/s     #
+#    Run 2: 1463.96 MB/s     #
+#    Average: 1493.91 MB/s     #
+#    Disk: nvme3n1    #
+#    Run 1: 1533.71 MB/s     #
+#    Run 2: 1482.33 MB/s     #
+#    Average: 1508.02 MB/s     #
 #    Disk: nvme1n1    #
-#    Run 1: 2031.78 MB/s     #
-#    Run 2: 1933.92 MB/s     #
-#    Average: 1982.85 MB/s     #
+#    Run 1: 1624.40 MB/s     #
+#    Run 2: 1547.07 MB/s     #
+#    Average: 1585.73 MB/s     #
 ###################################
 
-Total benchmark time: 16.45 minutes
-Do you want to delete the testing dataset inferno/tn-bench? (yes/no): yes
-Deleting dataset: inferno/tn-bench
-Dataset inferno/tn-bench deleted.
+Total benchmark time: 10.62 minutes
  
 ```
 
