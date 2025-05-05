@@ -1,4 +1,4 @@
-# TN-Bench v1.06
+# TN-Bench v1.07
 
 TN-Bench is an OpenSource software script that benchmarks your system and collects various statistical information via the TrueNAS API. It creates a dataset in each of your pools during testing, consuming 20 GiB of space for each thread in your system.
 
@@ -8,6 +8,8 @@ TN-Bench is an OpenSource software script that benchmarks your system and collec
 - Benchmarks system performance using `dd` command.
 - Provides detailed information about system, pools, and disks.
 - Supports multiple pools.
+- Space validation
+
 
 ### Running the Script with 1M block size
 
@@ -15,17 +17,6 @@ TN-Bench is an OpenSource software script that benchmarks your system and collec
    git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench.py
    ```
 
-### NEW for v1.06 Running the Script with 1M Block size and zstd Compression
-
-   ```
-   git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench-zstd.py
-
-   ```
-### NEW for v1.06 Running the Script with 1M Block size and lz4 Compression
-
-   ```
-   git clone https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench-zstd.py
-   ```
 
 NOTE: `/dev/urandom` generates inherently uncompressible data, the the value of the compression options above is minimal in the current form.
 
