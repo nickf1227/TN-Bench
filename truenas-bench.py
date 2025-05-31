@@ -73,7 +73,7 @@ def print_bullet(message):
     print(color_text(f"• {message}", "ENDC"))
 
 def get_user_confirmation():
-    print_header("TN-Bench v1.09")
+    print_header("TN-Bench v1.10")
     print(color_text("TN-Bench is an OpenSource Software Script that uses standard tools to", "BOLD"))
     print(color_text("Benchmark your System and collect various statistical information via", "BOLD"))
     print(color_text("the TrueNAS API.", "BOLD"))
@@ -194,7 +194,14 @@ def print_disk_info_table(disk_info, pool_membership):
     
     fields = ["Name", "Model", "Serial", "ZFS GUID", "Pool", "Size (GiB)"]
     max_field_length = max(len(field) for field in fields)
-    max_value_length = max(len(str(disk.get(field.lower(), "N/A"))) for disk in disk_info for field in fields)
+    
+    # Calculate max value length
+    max_value_length = 0
+    for disk in disk_info:
+        for field in fields:
+            value = str(disk.get(field.lower(), "N/A"))
+            if len(value) > max_value_length:
+                max_value_length = len(value)
 
     # Print table header
     print(color_text(f"{'Field'.ljust(max_field_length)} | {'Value'.ljust(max_value_length)}", "BOLD"))
@@ -347,12 +354,20 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
     print_header(f"DD Benchmark Results for Pool: {escaped_pool_name}")
     for result in results:
         print_subheader(f"Threads: {result['threads']}")
-        for i, speed in enumerate(result['write_speeds']):
+        
+        # Extract values to avoid nested f-string issues
+        write_speeds = result['write_speeds']
+        avg_write = result['average_write_speed']
+        read_speeds = result['read_speeds']
+        avg_read = result['average_read_speed']
+        
+        for i, speed in enumerate(write_speeds):
             print_bullet(f"1M Seq Write Run {i+1}: {color_text(f'{speed:.2f} MB/s', 'YELLOW')}")
-        print_bullet(f"1M Seq Write Avg: {color_text(f'{result["average_write_speed"]:.2f} MB/s', 'GREEN')}")
-        for i, speed in enumerate(result['read_speeds']):
+        print_bullet(f"1M Seq Write Avg: {color_text(f'{avg_write:.2f} MB/s', 'GREEN')}")
+        
+        for i, speed in enumerate(read_speeds):
             print_bullet(f"1M Seq Read Run {i+1}: {color_text(f'{speed:.2f} MB/s', 'YELLOW')}")
-        print_bullet(f"1M Seq Read Avg: {color_text(f'{result["average_read_speed"]:.2f} MB/s', 'GREEN')}")
+        print_bullet(f"1M Seq Read Avg: {color_text(f'{avg_read:.2f} MB/s', 'GREEN')}")
     
     return results
 
@@ -400,9 +415,14 @@ def run_disk_read_benchmark(disk_info, system_info, iterations=2):
     print_header("Disk Read Benchmark Results")
     for result in results:
         print_subheader(f"Disk: {result['disk']}")
-        for i, speed in enumerate(result['speeds']):
+        
+        # Extract values to avoid nested f-string issues
+        speeds = result['speeds']
+        avg_speed = result['average_speed']
+        
+        for i, speed in enumerate(speeds):
             print_bullet(f"Run {i+1}: {color_text(f'{speed:.2f} MB/s', 'YELLOW')}")
-        print_bullet(f"Average: {color_text(f'{result["average_speed"]:.2f} MB/s', 'GREEN')}")
+        print_bullet(f"Average: {color_text(f'{avg_speed:.2f} MB/s', 'GREEN')}")
     
     return results
 
