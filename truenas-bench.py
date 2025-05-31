@@ -4,11 +4,12 @@ import os
 import signal
 import threading
 import time
+import argparse
 
 def get_user_confirmation():
     print("\n###################################")
     print("#                                 #")
-    print("#          TN-Bench v1.07         #")
+    print("#          TN-Bench v1.08         #")
     print("#          MONOLITHIC.            #")
     print("#                                 #")
     print("###################################")
@@ -252,20 +253,30 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
     for threads in thread_counts:
         write_speed_1, write_speed_2, average_write_speed = run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
         read_speed_1, read_speed_2, average_read_speed = run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
-        results.append((threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed))
+        results.append({
+            "threads": threads,
+            "write_speed_1": write_speed_1,
+            "write_speed_2": write_speed_2,
+            "average_write_speed": average_write_speed,
+            "read_speed_1": read_speed_1,
+            "read_speed_2": read_speed_2,
+            "average_read_speed": average_read_speed
+        })
 
     print(f"\n###################################")
     print(f"#         DD Benchmark Results for Pool: {escaped_pool_name}    #")
     print("###################################")
-    for threads, write_speed_1, write_speed_2, average_write_speed, read_speed_1, read_speed_2, average_read_speed in results:
-        print(f"#    Threads: {threads}    #")
-        print(f"#    1M Seq Write Run 1: {write_speed_1:.2f} MB/s     #")
-        print(f"#    1M Seq Write Run 2: {write_speed_2:.2f} MB/s     #")
-        print(f"#    1M Seq Write Avg: {average_write_speed:.2f} MB/s #")
-        print(f"#    1M Seq Read Run 1: {read_speed_1:.2f} MB/s      #")
-        print(f"#    1M Seq Read Run 2: {read_speed_2:.2f} MB/s      #")
-        print(f"#    1M Seq Read Avg: {average_read_speed:.2f} MB/s  #")
+    for result in results:
+        print(f"#    Threads: {result['threads']}    #")
+        print(f"#    1M Seq Write Run 1: {result['write_speed_1']:.2f} MB/s     #")
+        print(f"#    1M Seq Write Run 2: {result['write_speed_2']:.2f} MB/s     #")
+        print(f"#    1M Seq Write Avg: {result['average_write_speed']:.2f} MB/s #")
+        print(f"#    1M Seq Read Run 1: {result['read_speed_1']:.2f} MB/s      #")
+        print(f"#    1M Seq Read Run 2: {result['read_speed_2']:.2f} MB/s      #")
+        print(f"#    1M Seq Read Avg: {result['average_read_speed']:.2f} MB/s  #")
         print("###################################")
+    
+    return results
 
 def run_disk_read_benchmark(disk_info):
     print("Running disk read benchmark...")
@@ -295,21 +306,30 @@ def run_disk_read_benchmark(disk_info):
 
         if disk_name != "N/A":
             speeds = []
-            for _ in range(2):  # Run 2 sequential times for each disk
+            for run_num in range(2):  # Run 2 sequential times for each disk
+                print(f"Running disk read test on {disk_name} (run {run_num+1})...")
                 speed = run_dd_read_command(disk_name, read_size_gib)
-                speeds.append(speed)  # Collect the speed value
+                speeds.append(speed)
+                print(f"Disk {disk_name} run {run_num+1}: {speed:.2f} MB/s")
             average_speed = sum(speeds) / len(speeds)
-            results.append((disk_name, speeds[0], speeds[1], average_speed))  # Report both runs and the average speed in MB/s
+            results.append({
+                "disk": disk_name,
+                "run1_speed": speeds[0],
+                "run2_speed": speeds[1],
+                "average_speed": average_speed
+            })
 
     print("\n###################################")
     print("#         Disk Read Benchmark Results   #")
     print("###################################")
-    for disk_name, speed1, speed2, average_speed in results:
-        print(f"#    Disk: {disk_name}    #")
-        print(f"#    Run 1: {speed1:.2f} MB/s     #")
-        print(f"#    Run 2: {speed2:.2f} MB/s     #")
-        print(f"#    Average: {average_speed:.2f} MB/s     #")
+    for result in results:
+        print(f"#    Disk: {result['disk']}    #")
+        print(f"#    Run 1: {result['run1_speed']:.2f} MB/s     #")
+        print(f"#    Run 2: {result['run2_speed']:.2f} MB/s     #")
+        print(f"#    Average: {result['average_speed']:.2f} MB/s     #")
     print("###################################")
+    
+    return results
 
 def cleanup(file_prefix, dataset_path):
     print("Cleaning up test files...")
@@ -365,23 +385,52 @@ def get_dataset_available_bytes(pool_name):
     print(f"Dataset {dataset_name} not found.")
     return 0
 
+def save_results_to_json(results, output_path):
+    """Save benchmark results to a JSON file"""
+    try:
+        with open(output_path, 'w') as f:
+            json.dump(results, f, indent=4)
+        print(f"\nBenchmark results saved to: {os.path.abspath(output_path)}")
+    except Exception as e:
+        print(f"Error saving results to JSON: {str(e)}")
+
 if __name__ == "__main__":
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='TN-Bench System Benchmark')
+    parser.add_argument('--output', type=str, default='./tn_bench_results.json',
+                        help='Path to output JSON file (default: ./tn_bench_results.json)')
+    args = parser.parse_args()
+
+    # Initialize results dictionary
+    benchmark_results = {
+        "system_info": {},
+        "pools": [],
+        "disk_benchmark": [],
+        "total_benchmark_time_minutes": 0
+    }
+
     get_user_confirmation()
     
     start_time = time.time()
 
+    # Collect system information
     system_info = get_system_info()
+    benchmark_results["system_info"] = system_info
     print_system_info_table(system_info)
     
+    # Collect pool information
     pool_info = get_pool_info()
+    benchmark_results["pools"] = pool_info
     print_pool_info_table(pool_info)
 
+    # Collect disk information
     disk_info = get_disk_info()
     pool_membership = get_pool_membership()
+    benchmark_results["disks"] = disk_info
     print_disk_info_table(disk_info, pool_membership)
 
     cores = system_info.get("cores", 1)
-    bytes_per_thread_series_1 = 20480  # 20 GiB per thread (1M * 20480)
+    bytes_per_thread_series_1 = 10240  # 10 GiB per thread (1M * 10240)
     block_size_series_1 = "1M"
     file_prefix_series_1 = "file_"
 
@@ -390,65 +439,61 @@ if __name__ == "__main__":
     print("###################################")
     print(f"Using {cores} threads for the benchmark.\n")
 
-for pool in pool_info:
-    pool_name = pool.get('name', 'N/A')
-    print(f"\nCreating test dataset for pool: {pool_name}")
-    dataset_path = create_dataset(pool_name)
-    if dataset_path:
-        # Check available space
-        available_bytes = get_dataset_available_bytes(pool_name)
-        required_bytes = 20 * cores * (1024 ** 3)  # 20 GiB per thread * cores
-        
-        # Convert to GiB for display
-        available_gib = available_bytes / (1024 ** 3)
-        required_gib = 20 * cores
-        
-        print(f"\n=== Space Verification ===")
-        print(f"Available space: {available_gib:.2f} GiB")
-        print(f"Space required:  {required_gib:.2f} GiB (20 GiB/thread × {cores} threads)")
-        
-        if available_bytes < required_bytes:
-            print(f"\n WARNING: Insufficient space in dataset {pool_name}/tn-bench")
-            print(f"Minimum required: {required_gib} GiB")
-            print(f"Available:        {available_gib:.2f} GiB")
-            proceed = input("\nProceeding may cause benchmark failures. Continue anyway? (yes/no): ")
-            if proceed.lower() != 'yes':
-                print(f"Skipping benchmarks for pool {pool_name}")
-                delete_dataset(f"{pool_name}/tn-bench")
-                continue
-
-        print(f"\n Sufficient space available - proceeding with benchmarks...")
-        
-    cores = system_info.get("cores", 1)
-    bytes_per_thread_series_1 = 10240
-    block_size_series_1 = "1M"
-    file_prefix_series_1 = "file_"
-
-    print("\n###################################")
-    print("#                                 #")
-    print("#       DD Benchmark Starting     #")
-    print("#                                 #")
-    print("###################################")
-    print(f"Using {cores} threads for the benchmark.\n")
-
+    # Run benchmarks for each pool
     for pool in pool_info:
         pool_name = pool.get('name', 'N/A')
         print(f"\nCreating test dataset for pool: {pool_name}")
         dataset_name = f"{pool_name}/tn-bench"
         dataset_path = create_dataset(pool_name)
         if dataset_path:
+            # Check available space
+            available_bytes = get_dataset_available_bytes(pool_name)
+            required_bytes = 20 * cores * (1024 ** 3)  # 20 GiB per thread * cores
+            
+            # Convert to GiB for display
+            available_gib = available_bytes / (1024 ** 3)
+            required_gib = 20 * cores
+            
+            print(f"\n=== Space Verification ===")
+            print(f"Available space: {available_gib:.2f} GiB")
+            print(f"Space required:  {required_gib:.2f} GiB (20 GiB/thread × {cores} threads)")
+            
+            if available_bytes < required_bytes:
+                print(f"\n WARNING: Insufficient space in dataset {pool_name}/tn-bench")
+                print(f"Minimum required: {required_gib} GiB")
+                print(f"Available:        {available_gib:.2f} GiB")
+                proceed = input("\nProceeding may cause benchmark failures. Continue anyway? (yes/no): ")
+                if proceed.lower() != 'yes':
+                    print(f"Skipping benchmarks for pool {pool_name}")
+                    delete_dataset(f"{pool_name}/tn-bench")
+                    continue
+
+            print(f"\n Sufficient space available - proceeding with benchmarks...")
+            
             print(f"\nRunning benchmarks for pool: {pool_name}")
-            run_benchmarks_for_pool(pool_name, cores, bytes_per_thread_series_1, block_size_series_1, file_prefix_series_1, dataset_path)
+            pool_results = run_benchmarks_for_pool(
+                pool_name, cores, bytes_per_thread_series_1, 
+                block_size_series_1, file_prefix_series_1, dataset_path
+            )
+            
+            # Store pool benchmark results
+            for pool_entry in benchmark_results["pools"]:
+                if pool_entry["name"] == pool_name:
+                    pool_entry["benchmark_results"] = pool_results
+            
             cleanup(file_prefix_series_1, dataset_path)
 
-    run_disk_read_benchmark(disk_info)
+    # Run disk benchmark
+    disk_bench_results = run_disk_read_benchmark(disk_info)
+    benchmark_results["disk_benchmark"] = disk_bench_results
 
-    end_time = time.time()  # End the timer
+    end_time = time.time()
     total_time_taken = end_time - start_time
     total_time_taken_minutes = total_time_taken / 60
-
+    benchmark_results["total_benchmark_time_minutes"] = total_time_taken_minutes
     print(f"\nTotal benchmark time: {total_time_taken_minutes:.2f} minutes")
 
+    # Cleanup datasets
     for pool in pool_info:
         pool_name = pool.get('name', 'N/A')
         dataset_name = f"{pool_name}/tn-bench"
@@ -458,3 +503,6 @@ for pool in pool_info:
             print(f"Dataset {dataset_name} deleted.")
         else:
             print(f"Dataset {dataset_name} not deleted.")
+
+    # Save results to JSON
+    save_results_to_json(benchmark_results, args.output)
