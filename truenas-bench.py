@@ -278,7 +278,7 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
     
     return results
 
-def run_disk_read_benchmark(disk_info):
+def run_disk_read_benchmark(disk_info, system_info):
     print("Running disk read benchmark...")
     print("###################################")
     print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 2 times for each disk and averaged.")
@@ -394,6 +394,58 @@ def save_results_to_json(results, output_path):
     except Exception as e:
         print(f"Error saving results to JSON: {str(e)}")
 
+def select_pools_to_test(pool_info):
+    """Prompt user to select which pools to benchmark"""
+    print("\n###################################")
+    print("#     Pool Selection for Testing   #")
+    print("###################################")
+    print("Available pools:")
+    for i, pool in enumerate(pool_info):
+        print(f"{i+1}. {pool['name']}")
+    
+    print("\nYou can:")
+    print("1. Enter specific pool numbers (comma separated)")
+    print("2. Type 'all' to test all pools")
+    print("3. Type 'none' to skip pool testing")
+    
+    while True:
+        selection = input("\nEnter your choice [all]: ").strip()
+        if not selection:
+            return pool_info  # Default to all
+        
+        if selection.lower() == 'all':
+            return pool_info
+        
+        if selection.lower() == 'none':
+            return []
+        
+        try:
+            selected_indices = [int(idx.strip()) - 1 for idx in selection.split(',')]
+            selected_pools = []
+            for idx in selected_indices:
+                if 0 <= idx < len(pool_info):
+                    selected_pools.append(pool_info[idx])
+                else:
+                    print(f"Warning: Index {idx+1} is out of range. Skipping.")
+            return selected_pools
+        except ValueError:
+            print("Invalid input. Please enter pool numbers (e.g., '1,3'), 'all', or 'none'.")
+
+def ask_about_disk_benchmark():
+    """Prompt user whether to run disk benchmark"""
+    print("\n###################################")
+    print("#    Individual Disk Benchmark    #")
+    print("###################################")
+    response = input("Do you want to run the individual disk read benchmark? (yes/no) [yes]: ").strip().lower()
+    if response in ['', 'y', 'yes']:
+        return True
+    elif response in ['n', 'no']:
+        print("Skipping individual disk benchmark.")
+        return False
+    else:
+        print("Invalid input. Defaulting to yes.")
+        return True
+
 if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='TN-Bench System Benchmark')
@@ -406,7 +458,11 @@ if __name__ == "__main__":
         "system_info": {},
         "pools": [],
         "disk_benchmark": [],
-        "total_benchmark_time_minutes": 0
+        "total_benchmark_time_minutes": 0,
+        "benchmark_notes": {
+            "selected_pools": [],
+            "disk_benchmark_run": False
+        }
     }
 
     get_user_confirmation()
@@ -429,6 +485,14 @@ if __name__ == "__main__":
     benchmark_results["disks"] = disk_info
     print_disk_info_table(disk_info, pool_membership)
 
+    # Ask user which pools to test
+    selected_pools = select_pools_to_test(pool_info)
+    benchmark_results["benchmark_notes"]["selected_pools"] = [p['name'] for p in selected_pools]
+    
+    # Ask about disk benchmark
+    run_disk_bench = ask_about_disk_benchmark()
+    benchmark_results["benchmark_notes"]["disk_benchmark_run"] = run_disk_bench
+
     cores = system_info.get("cores", 1)
     bytes_per_thread_series_1 = 10240  # 10 GiB per thread (1M * 10240)
     block_size_series_1 = "1M"
@@ -439,8 +503,8 @@ if __name__ == "__main__":
     print("###################################")
     print(f"Using {cores} threads for the benchmark.\n")
 
-    # Run benchmarks for each pool
-    for pool in pool_info:
+    # Run benchmarks for each selected pool
+    for pool in selected_pools:
         pool_name = pool.get('name', 'N/A')
         print(f"\nCreating test dataset for pool: {pool_name}")
         dataset_name = f"{pool_name}/tn-bench"
@@ -483,9 +547,10 @@ if __name__ == "__main__":
             
             cleanup(file_prefix_series_1, dataset_path)
 
-    # Run disk benchmark
-    disk_bench_results = run_disk_read_benchmark(disk_info)
-    benchmark_results["disk_benchmark"] = disk_bench_results
+    # Run disk benchmark if requested
+    if run_disk_bench:
+        disk_bench_results = run_disk_read_benchmark(disk_info, system_info)
+        benchmark_results["disk_benchmark"] = disk_bench_results
 
     end_time = time.time()
     total_time_taken = end_time - start_time
@@ -493,8 +558,8 @@ if __name__ == "__main__":
     benchmark_results["total_benchmark_time_minutes"] = total_time_taken_minutes
     print(f"\nTotal benchmark time: {total_time_taken_minutes:.2f} minutes")
 
-    # Cleanup datasets
-    for pool in pool_info:
+    # Cleanup datasets for selected pools
+    for pool in selected_pools:
         pool_name = pool.get('name', 'N/A')
         dataset_name = f"{pool_name}/tn-bench"
         delete = input(f"Do you want to delete the testing dataset {dataset_name}? (yes/no): ")
