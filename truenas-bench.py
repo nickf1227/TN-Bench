@@ -186,11 +186,11 @@ def create_dataset(pool_name):
 def run_dd_command(command):
     subprocess.run(command, shell=True)
 
-def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path):
+def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations=2):
     print(f"Running DD write benchmark with {threads} threads...")
     speeds = []
 
-    for run in range(2):  # Run the benchmark two times
+    for run in range(iterations):  # Run the benchmark specified number of times
         start_time = time.time()
 
         threads_list = []
@@ -211,15 +211,15 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
         speeds.append(write_speed)
         print(f"Run {run + 1} write speed: {write_speed:.2f} MB/s")
 
-    average_write_speed = sum(speeds) / len(speeds)
+    average_write_speed = sum(speeds) / len(speeds) if speeds else 0
     print(f"Average write speed: {average_write_speed:.2f} MB/s")
-    return speeds[0], speeds[1], average_write_speed
+    return speeds, average_write_speed
 
-def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path):
+def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations=2):
     print(f"Running DD read benchmark with {threads} threads...")
     speeds = []
 
-    for run in range(2):  # Run the benchmark two times
+    for run in range(iterations):  # Run the benchmark specified number of times
         start_time = time.time()
 
         threads_list = []
@@ -240,27 +240,30 @@ def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, datas
         speeds.append(read_speed)
         print(f"Run {run + 1} read speed: {read_speed:.2f} MB/s")
 
-    average_read_speed = sum(speeds) / len(speeds)
+    average_read_speed = sum(speeds) / len(speeds) if speeds else 0
     print(f"Average read speed: {average_read_speed:.2f} MB/s")
-    return speeds[0], speeds[1], average_read_speed
+    return speeds, average_read_speed
 
-def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file_prefix, dataset_path):
+def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file_prefix, dataset_path, iterations=2):
     # Escape spaces in the pool name
     escaped_pool_name = pool_name.replace(" ", "\\ ")
     thread_counts = [1, cores // 4, cores // 2, cores]
     results = []
 
     for threads in thread_counts:
-        write_speed_1, write_speed_2, average_write_speed = run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
-        read_speed_1, read_speed_2, average_read_speed = run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path)
+        write_speeds, average_write_speed = run_write_benchmark(
+            threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations
+        )
+        read_speeds, average_read_speed = run_read_benchmark(
+            threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations
+        )
         results.append({
             "threads": threads,
-            "write_speed_1": write_speed_1,
-            "write_speed_2": write_speed_2,
+            "write_speeds": write_speeds,
             "average_write_speed": average_write_speed,
-            "read_speed_1": read_speed_1,
-            "read_speed_2": read_speed_2,
-            "average_read_speed": average_read_speed
+            "read_speeds": read_speeds,
+            "average_read_speed": average_read_speed,
+            "iterations": iterations
         })
 
     print(f"\n###################################")
@@ -268,20 +271,21 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
     print("###################################")
     for result in results:
         print(f"#    Threads: {result['threads']}    #")
-        print(f"#    1M Seq Write Run 1: {result['write_speed_1']:.2f} MB/s     #")
-        print(f"#    1M Seq Write Run 2: {result['write_speed_2']:.2f} MB/s     #")
+        for i, speed in enumerate(result['write_speeds']):
+            print(f"#    1M Seq Write Run {i+1}: {speed:.2f} MB/s     #")
         print(f"#    1M Seq Write Avg: {result['average_write_speed']:.2f} MB/s #")
-        print(f"#    1M Seq Read Run 1: {result['read_speed_1']:.2f} MB/s      #")
-        print(f"#    1M Seq Read Run 2: {result['read_speed_2']:.2f} MB/s      #")
+        for i, speed in enumerate(result['read_speeds']):
+            print(f"#    1M Seq Read Run {i+1}: {speed:.2f} MB/s      #")
         print(f"#    1M Seq Read Avg: {result['average_read_speed']:.2f} MB/s  #")
         print("###################################")
     
     return results
 
-def run_disk_read_benchmark(disk_info, system_info):
+def run_disk_read_benchmark(disk_info, system_info, iterations=2):
     print("Running disk read benchmark...")
     print("###################################")
-    print("This benchmark tests the 4K sequential read performance of each disk in the system using dd. It is run 2 times for each disk and averaged.")
+    print("This benchmark tests the 4K sequential read performance of each disk in the system using dd.")
+    print(f"It is run {iterations} time(s) for each disk and averaged.")
     print("In order to work around ARC caching in systems with it still enabled, This benchmark reads data in the amount of total system RAM or the total size of the disk, whichever is smaller.")
     print("###################################")
     results = []
@@ -306,17 +310,17 @@ def run_disk_read_benchmark(disk_info, system_info):
 
         if disk_name != "N/A":
             speeds = []
-            for run_num in range(2):  # Run 2 sequential times for each disk
+            for run_num in range(iterations):  # Run specified number of times
                 print(f"Running disk read test on {disk_name} (run {run_num+1})...")
                 speed = run_dd_read_command(disk_name, read_size_gib)
                 speeds.append(speed)
                 print(f"Disk {disk_name} run {run_num+1}: {speed:.2f} MB/s")
-            average_speed = sum(speeds) / len(speeds)
+            average_speed = sum(speeds) / len(speeds) if speeds else 0
             results.append({
                 "disk": disk_name,
-                "run1_speed": speeds[0],
-                "run2_speed": speeds[1],
-                "average_speed": average_speed
+                "speeds": speeds,
+                "average_speed": average_speed,
+                "iterations": iterations
             })
 
     print("\n###################################")
@@ -324,8 +328,8 @@ def run_disk_read_benchmark(disk_info, system_info):
     print("###################################")
     for result in results:
         print(f"#    Disk: {result['disk']}    #")
-        print(f"#    Run 1: {result['run1_speed']:.2f} MB/s     #")
-        print(f"#    Run 2: {result['run2_speed']:.2f} MB/s     #")
+        for i, speed in enumerate(result['speeds']):
+            print(f"#    Run {i+1}: {speed:.2f} MB/s     #")
         print(f"#    Average: {result['average_speed']:.2f} MB/s     #")
     print("###################################")
     
@@ -446,6 +450,36 @@ def ask_about_disk_benchmark():
         print("Invalid input. Defaulting to yes.")
         return True
 
+def ask_iteration_count(benchmark_type):
+    """Ask user how many iterations to run for a benchmark"""
+    print("\n###################################")
+    print(f"#    {benchmark_type} Benchmark Iterations    #")
+    print("###################################")
+    print("How many times should we run each test? (More iterations provide more consistent results but take longer)")
+    print("1. Run each test once (faster)")
+    print("2. Run each test twice (default, more accurate)")
+    
+    while True:
+        response = input("\nEnter iteration count (1 or 2) [2]: ").strip()
+        if not response:
+            return 2
+        
+        try:
+            count = int(response)
+            if count in [1, 2]:
+                return count
+            print("Please enter 1 or 2")
+        except ValueError:
+            print("Invalid input. Please enter 1 or 2")
+
+def ask_zfs_iterations():
+    """Ask user how many iterations to run for ZFS benchmarks"""
+    return ask_iteration_count("ZFS Pool")
+
+def ask_disk_iterations():
+    """Ask user how many iterations to run for disk benchmarks"""
+    return ask_iteration_count("Individual Disk")
+
 if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='TN-Bench System Benchmark')
@@ -459,9 +493,11 @@ if __name__ == "__main__":
         "pools": [],
         "disk_benchmark": [],
         "total_benchmark_time_minutes": 0,
-        "benchmark_notes": {
+        "benchmark_config": {
             "selected_pools": [],
-            "disk_benchmark_run": False
+            "disk_benchmark_run": False,
+            "zfs_iterations": 2,
+            "disk_iterations": 2
         }
     }
 
@@ -487,11 +523,23 @@ if __name__ == "__main__":
 
     # Ask user which pools to test
     selected_pools = select_pools_to_test(pool_info)
-    benchmark_results["benchmark_notes"]["selected_pools"] = [p['name'] for p in selected_pools]
+    benchmark_results["benchmark_config"]["selected_pools"] = [p['name'] for p in selected_pools]
+    
+    # Ask about ZFS iterations if pools selected
+    zfs_iterations = 2
+    if selected_pools:
+        zfs_iterations = ask_zfs_iterations()
+    benchmark_results["benchmark_config"]["zfs_iterations"] = zfs_iterations
     
     # Ask about disk benchmark
     run_disk_bench = ask_about_disk_benchmark()
-    benchmark_results["benchmark_notes"]["disk_benchmark_run"] = run_disk_bench
+    benchmark_results["benchmark_config"]["disk_benchmark_run"] = run_disk_bench
+    
+    # Ask about disk iterations if benchmark requested
+    disk_iterations = 2
+    if run_disk_bench:
+        disk_iterations = ask_disk_iterations()
+    benchmark_results["benchmark_config"]["disk_iterations"] = disk_iterations
 
     cores = system_info.get("cores", 1)
     bytes_per_thread_series_1 = 10240  # 10 GiB per thread (1M * 10240)
@@ -501,7 +549,11 @@ if __name__ == "__main__":
     print("\n###################################")
     print("#       DD Benchmark Starting     #")
     print("###################################")
-    print(f"Using {cores} threads for the benchmark.\n")
+    print(f"Using {cores} threads for the benchmark.")
+    print(f"ZFS tests will run {zfs_iterations} time(s) per configuration")
+    if run_disk_bench:
+        print(f"Disk tests will run {disk_iterations} time(s) per disk")
+    print()
 
     # Run benchmarks for each selected pool
     for pool in selected_pools:
@@ -537,7 +589,8 @@ if __name__ == "__main__":
             print(f"\nRunning benchmarks for pool: {pool_name}")
             pool_results = run_benchmarks_for_pool(
                 pool_name, cores, bytes_per_thread_series_1, 
-                block_size_series_1, file_prefix_series_1, dataset_path
+                block_size_series_1, file_prefix_series_1, dataset_path,
+                iterations=zfs_iterations
             )
             
             # Store pool benchmark results
@@ -549,7 +602,7 @@ if __name__ == "__main__":
 
     # Run disk benchmark if requested
     if run_disk_bench:
-        disk_bench_results = run_disk_read_benchmark(disk_info, system_info)
+        disk_bench_results = run_disk_read_benchmark(disk_info, system_info, iterations=disk_iterations)
         benchmark_results["disk_benchmark"] = disk_bench_results
 
     end_time = time.time()
