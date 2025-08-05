@@ -70,7 +70,7 @@ Delete testing dataset fire/tn-bench? (yes/no): yes
 ✓ Dataset fire/tn-bench deleted.
 ```
 ## UI Enhancement
-The script is now colorized and more human readable.
+### The script is now colorized and more human readable.
 ![a1455ff8f352193cdadd373471d714d42b170ebb](https://github.com/user-attachments/assets/0e938607-b9c4-424b-a780-ad079901f5a5)
 
 
