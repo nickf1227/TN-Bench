@@ -1,15 +1,36 @@
-# tn-bench v1.11
+tn-bench v1.11
 
-##  tn-bench is an OpenSource software script that benchmarks your system and collects various statistical information via the TrueNAS API. It creates a dataset in each of your pools during testing, consuming 20 GiB of space for each thread in your system.
+## Open Source TrueNAS Benchmarking Tool
 
-## Features
+tn-bench is an open source software script that benchmarks your TrueNAS system and collects comprehensive statistical information via the TrueNAS API. During testing, it creates temporary datasets in your pools, consuming 20 GiB of space per system thread.
 
-- Collects system information using TrueNAS API.
-- Benchmarks system performance using `dd` command.
-- Provides detailed information about system, pools, and disks.
-- Supports multiple pools.
-- Space validation
+## Key Features
 
+- **System Information Collection**:
+  - OS version, CPU model, core counts
+  - Memory capacity and load averages
+  - System product information
+
+- **Storage Benchmarking**:
+  - Pool performance testing with variable thread counts
+  - Individual disk 4K sequential read benchmarks
+  - Multiple iteration support for accuracy
+
+- **Structured Output**:
+  - Versioned JSON schema (v1.0) for forward/backward compatibility
+  - Comprehensive metadata including timestamps and duration
+  - Hierarchical data organization
+
+- **Validation & Safety**:
+  - Space availability verification
+  - User confirmation prompts
+  - Cleanup options for test datasets
+
+## What's Changed
+* Updating new branch to current main by @nickf1227 in https://github.com/nickf1227/tn-bench/pull/3
+
+
+**Full Changelog**: https://github.com/nickf1227/tn-bench/compare/1.07...1.11
 
 ### Running the Script
    ```
