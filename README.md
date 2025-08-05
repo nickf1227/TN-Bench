@@ -1,4 +1,4 @@
-# tn-bench v1.07
+# tn-bench v1.11
 
 ##  tn-bench is an OpenSource software script that benchmarks your system and collects various statistical information via the TrueNAS API. It creates a dataset in each of your pools during testing, consuming 20 GiB of space for each thread in your system.
 
@@ -38,16 +38,46 @@ Example of `arcstat -f time,hit%,dh%,ph%,mh% 10` running while the benchmark is 
 <img src="https://github.com/user-attachments/assets/4bdeea59-c88c-46b1-b17a-939594c4eda1" width="50%" />
 
 
-- **Disk Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. Calculated based on the size of your RAM and the disks, data already on each disk is read in 4K chunks to `/dev/null` , making this a 4K sequential read test. 4K was chosen because `ashift=12` for all recent ZFS pools created in TrueNAS. The reads are so large to try and avoid ARC caching. Run-to-run variance is still expected, particularly on SSDs, as the data ends up inside of internal caches. For this reason, it is run 4 times and averaged.
+- **Disk Benchmark**: The script performs four runs of the read benchmark using `dd` with varying thread counts. Calculated based on the size of your RAM and the disks, data already on each disk is read in 4K chunks to `/dev/null` , making this a 4K sequential read test. 4K was chosen because `ashift=12` for all recent ZFS pools created in TrueNAS. The amount of data read is so large to try and avoid ARC caching. Run-to-run variance is still expected, particularly on SSDs, as the data ends up inside of internal caches. For this reason, it is run 4 times and averaged.
   
 - **Results**: The script displays the results for each run and the average speed. This should give you an idea of the impacts of various thread-counts (as a synthetic representation of client-counts) and the ZFS ARC caching mechanism. 
 
 **NOTE:** The script's run duration is dependant on the number of threads in your system as well as the number of disks in your system. Small all-flash systems may complete this benchmark in 25 minutes, while larger systems with spinning hardrives may take several hours. The script will not stop other I/O activity on a production system, but will severely limit performance. This benchmark is best run on a system with no other workload. This will give you the best outcome in terms of the accuracy of the data, in addition to not creating angry users.
 ### Cleanup
 
-After the benchmarking is complete, the script prompts you to delete the datasets created during the process.
+- Generates versioned JSON output with schema v1.0
+- Provides option to delete test datasets
+- Displays total benchmark duration
 
-## Example Output
+## Performance Considerations
+
+### ARC Behavior
+![ARC During Benchmark](https://github.com/user-attachments/assets/4bdeea59-c88c-46b1-b17a-939594c4eda1)
+
+
+- ARC hit rate decreases as working set exceeds cache size, which TN-Bench intentionally causes.
+- Results reflect mixed cache hit/miss scenarios, not neccesarily indicative of a real world workload.
+
+### Resource Requirements
+| Resource Type          | Requirement                                  |
+|------------------------|---------------------------------------------|
+| Pool Test Space        | 20 GiB per thread                           |
+
+### Execution Time
+- **Small all-flash systems**: ~10-30 minutes
+- **Large HDD arrays**: Several hours or more
+- **Progress indicators**: Provided at each stage
+- **Status updates**: For each benchmark operation
+
+## Cleanup Options
+The script provides interactive prompts to delete test datasets after benchmarking. All temporary files are automatically removed.
+
+```
+Delete testing dataset fire/tn-bench? (yes/no): yes
+✓ Dataset fire/tn-bench deleted.
+```
+
+## Example Output (example test was performed on a busy system, don't do that)
 
 ```
 
