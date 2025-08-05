@@ -74,7 +74,7 @@ def print_bullet(message):
     print(color_text(f"• {message}", "ENDC"))
 
 def get_user_confirmation():
-    print_header("TN-Bench v1.10")
+    print_header("TN-Bench v1.11")
     print(color_text("TN-Bench is an OpenSource Software Script that uses standard tools to", "BOLD"))
     print(color_text("Benchmark your System and collect various statistical information via", "BOLD"))
     print(color_text("the TrueNAS API.", "BOLD"))
