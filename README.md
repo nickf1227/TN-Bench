@@ -69,6 +69,9 @@ The script provides interactive prompts to delete test datasets after benchmarki
 Delete testing dataset fire/tn-bench? (yes/no): yes
 ✓ Dataset fire/tn-bench deleted.
 ```
+## UI Enhancement
+The script is now colorized and more human readable.
+
 
 ## Output file
 
