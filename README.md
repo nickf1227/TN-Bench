@@ -11,8 +11,7 @@
 - Space validation
 
 
-### Running the Script with 1M block size
-
+### Running the Script
    ```
    git clone -b monolithic-version-1.07 https://github.com/nickf1227/TN-Bench.git && cd TN-Bench && python3 truenas-bench.py
    ```
