@@ -43,11 +43,6 @@ Example of `arcstat -f time,hit%,dh%,ph%,mh% 10` running while the benchmark is 
 - **Results**: The script displays the results for each run and the average speed. This should give you an idea of the impacts of various thread-counts (as a synthetic representation of client-counts) and the ZFS ARC caching mechanism. 
 
 **NOTE:** The script's run duration is dependant on the number of threads in your system as well as the number of disks in your system. Small all-flash systems may complete this benchmark in 25 minutes, while larger systems with spinning hardrives may take several hours. The script will not stop other I/O activity on a production system, but will severely limit performance. This benchmark is best run on a system with no other workload. This will give you the best outcome in terms of the accuracy of the data, in addition to not creating angry users.
-### Cleanup
-
-- Generates versioned JSON output with schema v1.0
-- Provides option to delete test datasets
-- Displays total benchmark duration
 
 ## Performance Considerations
 
