@@ -276,6 +276,7 @@ def run_dd_command(command):
 def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations=2):
     print_info(f"Running DD write benchmark with {threads} threads...")
     speeds = []
+    total_bytes_written = 0  # Track total bytes written
 
     for run in range(iterations):
         start_time = time.time()
@@ -292,14 +293,20 @@ def run_write_benchmark(threads, bytes_per_thread, block_size, file_prefix, data
 
         end_time = time.time()
         total_time_taken = end_time - start_time
-        total_bytes = threads * bytes_per_thread * 1024 * 1024
-        write_speed = total_bytes / 1024 / 1024 / total_time_taken
+        
+        # Calculate bytes written in this run
+        block_size_bytes = 1024*1024  # 1M = 1,048,576 bytes
+        bytes_this_run = threads * bytes_per_thread * block_size_bytes
+        total_bytes_written += bytes_this_run
+        
+        write_speed = bytes_this_run / total_time_taken / (1024*1024)  # MB/s
         speeds.append(write_speed)
         print_info(f"Run {run + 1} write speed: {color_text(f'{write_speed:.2f} MB/s', 'YELLOW')}")
+        print_info(f"Run {run + 1} wrote: {bytes_this_run/(1024**3):.2f} GiB")
 
     average_write_speed = sum(speeds) / len(speeds) if speeds else 0
     print_success(f"Average write speed: {color_text(f'{average_write_speed:.2f} MB/s', 'GREEN')}")
-    return speeds, average_write_speed
+    return speeds, average_write_speed, total_bytes_written
 
 def run_read_benchmark(threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations=2):
     print_info(f"Running DD read benchmark with {threads} threads...")
@@ -333,12 +340,15 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
     escaped_pool_name = pool_name.replace(" ", "\\ ")
     thread_counts = [1, cores // 4, cores // 2, cores]
     results = []
+    total_bytes_written = 0  # Track total bytes written for this pool
 
     for threads in thread_counts:
         print_section(f"Testing Pool: {escaped_pool_name} - Threads: {threads}")
-        write_speeds, average_write_speed = run_write_benchmark(
+        write_speeds, average_write_speed, bytes_written = run_write_benchmark(
             threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations
         )
+        total_bytes_written += bytes_written
+        
         read_speeds, average_read_speed = run_read_benchmark(
             threads, bytes_per_thread, block_size, file_prefix, dataset_path, iterations
         )
@@ -348,7 +358,8 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
             "average_write_speed": average_write_speed,
             "read_speeds": read_speeds,
             "average_read_speed": average_read_speed,
-            "iterations": iterations
+            "iterations": iterations,
+            "bytes_written": bytes_written
         })
 
     print_header(f"DD Benchmark Results for Pool: {escaped_pool_name}")
@@ -360,16 +371,18 @@ def run_benchmarks_for_pool(pool_name, cores, bytes_per_thread, block_size, file
         avg_write = result['average_write_speed']
         read_speeds = result['read_speeds']
         avg_read = result['average_read_speed']
+        bytes_written = result['bytes_written']
         
         for i, speed in enumerate(write_speeds):
             print_bullet(f"1M Seq Write Run {i+1}: {color_text(f'{speed:.2f} MB/s', 'YELLOW')}")
         print_bullet(f"1M Seq Write Avg: {color_text(f'{avg_write:.2f} MB/s', 'GREEN')}")
+        print_bullet(f"Total Written: {bytes_written/(1024**3):.2f} GiB")
         
         for i, speed in enumerate(read_speeds):
             print_bullet(f"1M Seq Read Run {i+1}: {color_text(f'{speed:.2f} MB/s', 'YELLOW')}")
         print_bullet(f"1M Seq Read Avg: {color_text(f'{avg_read:.2f} MB/s', 'GREEN')}")
     
-    return results
+    return results, total_bytes_written
 
 def run_disk_read_benchmark(disk_info, system_info, iterations=2):
     print_header("Disk Read Benchmark")
@@ -425,6 +438,18 @@ def run_disk_read_benchmark(disk_info, system_info, iterations=2):
         print_bullet(f"Average: {color_text(f'{avg_speed:.2f} MB/s', 'GREEN')}")
     
     return results
+
+def calculate_dwpd(total_writes_gib, pool_capacity_gib, test_duration_seconds):
+    """Calculate Drive Writes Per Day (DWPD)"""
+    if pool_capacity_gib <= 0:
+        return 0.0
+    
+    # Calculate writes per second relative to pool capacity
+    writes_per_second = total_writes_gib / pool_capacity_gib / test_duration_seconds
+    
+    # Extrapolate to daily writes
+    dwpd = writes_per_second * 86400  # 86400 seconds in a day
+    return dwpd
 
 def cleanup(file_prefix, dataset_path):
     print_info("Cleaning up test files...")
@@ -683,6 +708,7 @@ if __name__ == "__main__":
             break
             
         pool_name = pool.get('name', 'N/A')
+        pool_start_time = time.time()  # Track start time for DWPD calculation
         print_header(f"Testing Pool: {pool_name}")
         print_info(f"Creating test dataset for pool: {pool_name}")
         dataset_name = f"{pool_name}/tn-bench"
@@ -710,16 +736,43 @@ if __name__ == "__main__":
 
             print_success("Sufficient space available - proceeding with benchmarks")
             
-            pool_results = run_benchmarks_for_pool(
+            pool_results, total_bytes_written = run_benchmarks_for_pool(
                 pool_name, cores, bytes_per_thread_series_1, 
                 block_size_series_1, file_prefix_series_1, dataset_path,
                 iterations=zfs_iterations
             )
             
+            pool_end_time = time.time()
+            pool_duration = pool_end_time - pool_start_time
+            
+            # Get pool capacity for DWPD calculation
+            pool_capacity_bytes = None
+            for p in pool_info:
+                if p['name'] == pool_name:
+                    pool_capacity_bytes = p.get('size', 0)
+                    break
+            
+            total_writes_gib = total_bytes_written / (1024 ** 3)
+            pool_capacity_gib = pool_capacity_bytes / (1024 ** 3) if pool_capacity_bytes else 0
+            
+            # Calculate DWPD
+            dwpd = calculate_dwpd(total_writes_gib, pool_capacity_gib, pool_duration)
+            
+            # Print summary
+            print_section("Pool Write Summary")
+            print_info(f"Total data written: {total_writes_gib:.2f} GiB")
+            print_info(f"Pool capacity: {pool_capacity_gib:.2f} GiB")
+            print_info(f"Benchmark duration: {pool_duration:.2f} seconds")
+            print_info(f"Drive Writes Per Day (DWPD): {dwpd:.2f}")
+            
             # Store pool benchmark results
             for pool_entry in benchmark_results["pools"]:
                 if pool_entry["name"] == pool_name:
                     pool_entry["benchmark_results"] = pool_results
+                    pool_entry["total_writes_gib"] = total_writes_gib
+                    pool_entry["dwpd"] = dwpd
+                    pool_entry["benchmark_duration_seconds"] = pool_duration
+                    break
             
             cleanup(file_prefix_series_1, dataset_path)
 
